@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "193456457042",
+    "project_id": "connect-ed-dfbbd",
+    "storage_bucket": "connect-ed-dfbbd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:193456457042:android:93e686c748ca5ae838268b",
+        "android_client_info": {
+          "package_name": "com.example.connect_ed_2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5k2SONaLw-uvPV1w4i1wpWHadw4Ppf5Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
