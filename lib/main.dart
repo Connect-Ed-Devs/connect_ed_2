@@ -1,7 +1,12 @@
 import 'dart:ui';
 
+import 'package:connect_ed_2/frontend/articles/articles.dart';
+import 'package:connect_ed_2/frontend/calendar/calendar.dart';
+import 'package:connect_ed_2/frontend/events/events.dart';
+import 'package:connect_ed_2/frontend/home/home.dart';
 import 'package:connect_ed_2/frontend/setup/nav_bar.dart';
 import 'package:connect_ed_2/frontend/setup/styles.dart';
+import 'package:connect_ed_2/frontend/sports/sports.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase/firebase_options.dart';
@@ -79,54 +84,31 @@ class _MyHomePageState extends State<MyHomePage> {
 
   int _selectedIndex = 0;
 
+  List<Widget> pages = [HomePage(), CalendarPage(), EventsPage(), SportsPage(), ArticlesPage()];
+
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      bottomNavigationBar: CENavBar(
-        selectedIndex: _selectedIndex,
-        onIndexChanged: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text('$_counter', style: Theme.of(context).textTheme.headlineMedium),
-          ],
-        ),
+      body: Stack(
+        children: [
+          // Main content that extends full screen
+          pages[_selectedIndex],
+
+          // Navigation bar positioned at bottom
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: CENavBar(
+              selectedIndex: _selectedIndex,
+              onIndexChanged: (index) {
+                setState(() {
+                  _selectedIndex = index;
+                });
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
