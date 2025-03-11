@@ -9,6 +9,8 @@ class CENavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final navBarHeight = 36 + MediaQuery.of(context).padding.bottom;
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.tertiary.withAlpha(150),
@@ -17,20 +19,20 @@ class CENavBar extends StatelessWidget {
       child: ClipRRect(
         borderRadius: const BorderRadius.only(topLeft: Radius.circular(16.0), topRight: Radius.circular(16.0)),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+          filter: ImageFilter.blur(sigmaX: 7.5, sigmaY: 7.5),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                height: 64,
+                height: navBarHeight,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildNavItem(context, Icons.home_outlined, Icons.home, 0),
                     _buildNavItem(context, Icons.calendar_today_outlined, Icons.calendar_today, 1),
                     _buildNavItem(context, Icons.stadium_outlined, Icons.stadium, 2),
-                    _buildNavItem(context, Icons.sports_basketball_outlined, Icons.sports_basketball, 4),
-                    _buildNavItem(context, Icons.article_outlined, Icons.article, 5),
+                    _buildNavItem(context, Icons.sports_basketball_outlined, Icons.sports_basketball, 3),
+                    _buildNavItem(context, Icons.article_outlined, Icons.article, 4),
                   ],
                 ),
               ),
