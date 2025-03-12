@@ -9,9 +9,41 @@ class CalendarWidget extends StatefulWidget {
   State<CalendarWidget> createState() => _CalendarWidgetState();
 }
 
-class _CalendarWidgetState extends State<CalendarWidget> {
+class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStateMixin {
   // Track which week to display based on selected date
   late int _currentWeekIndex;
+
+  // Add controller for the animation
+  final Map<DateTime, AnimationController> _controllers = {};
+
+  // Update constants for better spacing
+  static const double SINGLE_WEEK_HEIGHT = 40.0; // Increased from 36.0
+  static const double HEADER_HEIGHT = 32.0; // Increased from 28.0
+  static const double HORIZONTAL_PADDING = 16.0;
+  static const double WEEK_BOTTOM_PADDING = 0.0;
+
+  @override
+  void dispose() {
+    // Clean up all animation controllers
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  // Helper method to get or create animation controller for a date
+  AnimationController _getController(DateTime date) {
+    if (!_controllers.containsKey(date)) {
+      _controllers[date] = AnimationController(duration: const Duration(milliseconds: 250), vsync: this);
+    }
+    return _controllers[date]!;
+  }
+
+  // Helper method to trigger the animation
+  void _triggerAnimation(DateTime date) {
+    final controller = _getController(date);
+    controller.forward().then((_) => controller.reverse());
+  }
 
   // Generate calendar grid for the provided month
   List<List<DateTime>> _generateCalendarDays(DateTime month) {
@@ -19,25 +51,26 @@ class _CalendarWidgetState extends State<CalendarWidget> {
 
     // First day of the month
     final DateTime firstDay = DateTime(month.year, month.month, 1);
+    // Last day of the month
+    final DateTime lastDay = DateTime(month.year, month.month + 1, 0);
 
     // First day of the calendar grid (may be from the previous month)
-    // Adjust to start from Sunday (weekday 7 or 0)
     int firstDayOffset = firstDay.weekday % 7;
     final DateTime firstCalendarDay = firstDay.subtract(Duration(days: firstDayOffset));
 
-    // Generate 6 weeks to be safe (covers all month layouts)
-    for (int week = 0; week < 6; week++) {
+    // Calculate how many weeks we need
+    int lastDayOffset = lastDay.weekday % 7;
+    int daysToShow = firstDayOffset + lastDay.day + (6 - lastDayOffset);
+    int weeksNeeded = (daysToShow / 7).ceil();
+
+    // Generate only the needed weeks
+    for (int week = 0; week < weeksNeeded; week++) {
       final List<DateTime> weekDays = [];
       for (int day = 0; day < 7; day++) {
         final DateTime date = firstCalendarDay.add(Duration(days: week * 7 + day));
         weekDays.add(date);
       }
       result.add(weekDays);
-
-      // Stop if we've gone past the end of the month and completed the week
-      if (weekDays.last.month != month.month && weekDays.last.weekday == DateTime.sunday) {
-        break;
-      }
     }
 
     return result;
@@ -53,6 +86,11 @@ class _CalendarWidgetState extends State<CalendarWidget> {
       }
     }
     return 0; // Default to first week if not found
+  }
+
+  // Add method to calculate required height
+  double calculateRequiredHeight(List<List<DateTime>> days) {
+    return HEADER_HEIGHT + (SINGLE_WEEK_HEIGHT * days.length);
   }
 
   @override
@@ -75,6 +113,9 @@ class _CalendarWidgetState extends State<CalendarWidget> {
     // Generate calendar days based on current month
     List<List<DateTime>> days = _generateCalendarDays(currentMonth);
 
+    // Calculate the required height based on number of weeks
+    final double requiredHeight = calculateRequiredHeight(days);
+
     // Determine which week contains the selected date
     _currentWeekIndex = _getWeekIndex(days, selectedDate);
 
@@ -83,7 +124,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
 
     // Default values if provider isn't available
     bool showFullCalendar = true;
-    double currentHeight = 300; // Default full height
+    double currentHeight = requiredHeight; // Use calculated height as default
 
     // Use provider values if available
     if (heightInfo != null) {
@@ -91,20 +132,55 @@ class _CalendarWidgetState extends State<CalendarWidget> {
       currentHeight = heightInfo.currentHeight; // Use actual height from sliver
     }
 
-    // Calculate single week height for proper sizing
-    const double singleWeekHeight = 48.0; // Height of one week row including padding
-    const double headerHeight = 36.0; // Height of day header row + spacing
+    // Update the date container widget creation in both the full calendar and single week views
+    Widget buildDateContainer(DateTime date, bool isSelected, bool isCurrentMonth) {
+      final controller = _getController(date);
+
+      return FadeTransition(
+        opacity: Tween<double>(
+          begin: 1.0,
+          end: 0.5,
+        ).animate(CurvedAnimation(parent: controller, curve: Curves.easeInOut)),
+        child: GestureDetector(
+          onTap: () {
+            _triggerAnimation(date);
+            onDateSelected(date);
+          },
+          child: Container(
+            height: 32,
+            decoration: BoxDecoration(
+              color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              date.day.toString(),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color:
+                    isSelected
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : isCurrentMonth
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Container(
       color: Theme.of(context).colorScheme.surface,
-      height: currentHeight, // Explicitly set container height to match sliver height
+      height: currentHeight,
       child: ClipRect(
         child: OverflowBox(
-          minHeight: headerHeight + singleWeekHeight, // Minimum height shows one week + header
-          maxHeight: 400, // Max height for full calendar
+          minHeight: HEADER_HEIGHT + SINGLE_WEEK_HEIGHT, // Minimum height shows one week + header
+          maxHeight: requiredHeight, // Use calculated height instead of fixed value
           alignment: Alignment.topCenter,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: HORIZONTAL_PADDING),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -140,50 +216,30 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                           days.asMap().entries.map((entry) {
                             int weekIndex = entry.key;
                             List<DateTime> week = entry.value;
+                            bool isLastWeek = weekIndex == days.length - 1;
 
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8.0),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                children:
-                                    week.map((date) {
-                                      final bool isCurrentMonth = date.month == currentMonth.month;
-                                      final bool isSelected =
-                                          date.year == selectedDate.year &&
-                                          date.month == selectedDate.month &&
-                                          date.day == selectedDate.day;
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children:
+                                      week.map((date) {
+                                        final bool isCurrentMonth = date.month == currentMonth.month;
+                                        final bool isSelected =
+                                            date.year == selectedDate.year &&
+                                            date.month == selectedDate.month &&
+                                            date.day == selectedDate.day;
 
-                                      return Expanded(
-                                        child: GestureDetector(
-                                          onTap: () => onDateSelected(date),
-                                          child: Container(
-                                            height: 32,
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  isSelected
-                                                      ? Theme.of(context).colorScheme.primary
-                                                      : Colors.transparent,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              date.day.toString(),
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                                color:
-                                                    isSelected
-                                                        ? Colors.white
-                                                        : isCurrentMonth
-                                                        ? Theme.of(context).colorScheme.onSurface
-                                                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
-                              ),
+                                        return Expanded(child: buildDateContainer(date, isSelected, isCurrentMonth));
+                                      }).toList(),
+                                ),
+                                if (!isLastWeek)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4),
+                                    child: Divider(height: 1, color: Theme.of(context).dividerColor.withOpacity(0.2)),
+                                  ),
+                              ],
                             );
                           }).toList(),
                     ),
@@ -202,32 +258,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                                 date.month == selectedDate.month &&
                                 date.day == selectedDate.day;
 
-                            return Expanded(
-                              child: GestureDetector(
-                                onTap: () => onDateSelected(date),
-                                child: Container(
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    date.day.toString(),
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                      color:
-                                          isSelected
-                                              ? Colors.white
-                                              : isCurrentMonth
-                                              ? Theme.of(context).colorScheme.onSurface
-                                              : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
+                            return Expanded(child: buildDateContainer(date, isSelected, isCurrentMonth));
                           }).toList(),
                     ),
                   ),

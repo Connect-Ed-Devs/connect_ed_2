@@ -22,7 +22,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
 
   // Month formatter
   final DateFormat _monthFormatter = DateFormat('MMMM');
-  final DateFormat _dateFormatter = DateFormat('MMMM d');
+  final DateFormat _dateFormatter = DateFormat('MMMM dd, yyyy');
 
   @override
   void dispose() {
@@ -65,8 +65,29 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     });
   }
 
+  // Add method to calculate calendar height
+  double _getCalendarHeight(DateTime month) {
+    final firstDay = DateTime(month.year, month.month, 1);
+    final lastDay = DateTime(month.year, month.month + 1, 0);
+
+    final firstDayOffset = firstDay.weekday % 7;
+    final lastDayOffset = lastDay.weekday % 7;
+
+    final daysToShow = firstDayOffset + lastDay.day + (6 - lastDayOffset);
+    final weekCount = (daysToShow / 7).ceil();
+
+    const double SINGLE_WEEK_HEIGHT = 40.0; // Match updated widget constant
+    const double HEADER_HEIGHT = 32.0; // Match updated widget constant
+    const double TOTAL_VERTICAL_PADDING = 0.0; // Increased padding
+
+    return HEADER_HEIGHT + (SINGLE_WEEK_HEIGHT * weekCount) + TOTAL_VERTICAL_PADDING;
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Calculate the maximum height needed for the current month
+    final double maxCalendarHeight = _getCalendarHeight(_currentMonth);
+
     return Scaffold(
       body: CustomScrollView(
         controller: _scrollController,
@@ -88,12 +109,12 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
 
           SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-          // Calendar widget with selected date support
+          // Update the SliverPersistentHeader with dynamic maxHeight
           SliverPersistentHeader(
             pinned: true,
             delegate: _SliverHeaderDelegate(
-              minHeight: 90,
-              maxHeight: 320,
+              minHeight: 64,
+              maxHeight: maxCalendarHeight,
               child: CalendarMonthProvider(
                 currentMonth: _currentMonth,
                 selectedDate: _selectedDate,
@@ -106,8 +127,6 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
           // Content below calendar
           SliverToBoxAdapter(
             child: Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -123,7 +142,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
                       child: Container(
                         height: 80,
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
+                          color: Colors.grey[900],
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2, offset: const Offset(0, 1)),
