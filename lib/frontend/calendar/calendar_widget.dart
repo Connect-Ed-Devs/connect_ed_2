@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'calendar.dart'; // Import to access CalendarHeightProvider and CalendarMonthProvider
 
 class CalendarWidget extends StatefulWidget {
-  const CalendarWidget({super.key});
+  final bool isInAppBar;
+  final bool forceWeekView;
+
+  const CalendarWidget({super.key, this.isInAppBar = false, this.forceWeekView = false});
 
   @override
   State<CalendarWidget> createState() => _CalendarWidgetState();
@@ -16,11 +18,9 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
   // Add controller for the animation
   final Map<DateTime, AnimationController> _controllers = {};
 
-  // Update constants for better spacing
-  static const double SINGLE_WEEK_HEIGHT = 40.0; // Increased from 36.0
-  static const double HEADER_HEIGHT = 32.0; // Increased from 28.0
+  // Constants for layout
+
   static const double HORIZONTAL_PADDING = 16.0;
-  static const double WEEK_BOTTOM_PADDING = 0.0;
 
   @override
   void dispose() {
@@ -88,11 +88,6 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
     return 0; // Default to first week if not found
   }
 
-  // Add method to calculate required height
-  double calculateRequiredHeight(List<List<DateTime>> days) {
-    return HEADER_HEIGHT + (SINGLE_WEEK_HEIGHT * days.length);
-  }
-
   @override
   Widget build(BuildContext context) {
     // Get month info from provider
@@ -113,26 +108,13 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
     // Generate calendar days based on current month
     List<List<DateTime>> days = _generateCalendarDays(currentMonth);
 
-    // Calculate the required height based on number of weeks
-    final double requiredHeight = calculateRequiredHeight(days);
-
     // Determine which week contains the selected date
     _currentWeekIndex = _getWeekIndex(days, selectedDate);
 
-    // Get height information from provider
-    final heightInfo = CalendarHeightProvider.of(context);
+    // Determine if we show full calendar or just the week
+    bool showFullCalendar = !widget.forceWeekView && !widget.isInAppBar;
 
-    // Default values if provider isn't available
-    bool showFullCalendar = true;
-    double currentHeight = requiredHeight; // Use calculated height as default
-
-    // Use provider values if available
-    if (heightInfo != null) {
-      showFullCalendar = heightInfo.scrollProgress < 0.8; // Switch layouts when 80% scrolled
-      currentHeight = heightInfo.currentHeight; // Use actual height from sliver
-    }
-
-    // Update the date container widget creation in both the full calendar and single week views
+    // Date container builder function
     Widget buildDateContainer(DateTime date, bool isSelected, bool isCurrentMonth) {
       final controller = _getController(date);
 
@@ -147,7 +129,7 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
             onDateSelected(date);
           },
           child: Container(
-            height: 32,
+            height: widget.isInAppBar ? 24 : 32, // Smaller in app bar
             decoration: BoxDecoration(
               color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
               shape: BoxShape.circle,
@@ -156,8 +138,8 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
             child: Text(
               date.day.toString(),
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 14, // Smaller text in app bar
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 color:
                     isSelected
                         ? Theme.of(context).colorScheme.onPrimary
@@ -173,99 +155,82 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
 
     return Container(
       color: Theme.of(context).colorScheme.surface,
-      height: currentHeight,
-      child: ClipRect(
-        child: OverflowBox(
-          minHeight: HEADER_HEIGHT + SINGLE_WEEK_HEIGHT, // Minimum height shows one week + header
-          maxHeight: requiredHeight, // Use calculated height instead of fixed value
-          alignment: Alignment.topCenter,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: HORIZONTAL_PADDING),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Day of week headers - always visible
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children:
-                        const ["S", "M", "T", "W", "T", "F", "S"]
-                            .map(
-                              (day) => Expanded(
-                                child: Text(
-                                  day,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                  ),
-                ),
-
-                // Conditionally show full calendar or just current week based on scroll progress
-                if (showFullCalendar)
-                  AnimatedOpacity(
-                    opacity: heightInfo != null ? 1.0 - heightInfo.scrollProgress : 1.0,
-                    duration: const Duration(milliseconds: 100),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children:
-                          days.asMap().entries.map((entry) {
-                            int weekIndex = entry.key;
-                            List<DateTime> week = entry.value;
-                            bool isLastWeek = weekIndex == days.length - 1;
-
-                            return Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                  children:
-                                      week.map((date) {
-                                        final bool isCurrentMonth = date.month == currentMonth.month;
-                                        final bool isSelected =
-                                            date.year == selectedDate.year &&
-                                            date.month == selectedDate.month &&
-                                            date.day == selectedDate.day;
-
-                                        return Expanded(child: buildDateContainer(date, isSelected, isCurrentMonth));
-                                      }).toList(),
-                                ),
-                                if (!isLastWeek)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 4),
-                                    child: Divider(height: 1, color: Theme.of(context).dividerColor.withOpacity(0.2)),
-                                  ),
-                              ],
-                            );
-                          }).toList(),
-                    ),
-                  )
-                else
-                  AnimatedOpacity(
-                    opacity: heightInfo != null ? heightInfo.scrollProgress : 1.0,
-                    duration: const Duration(milliseconds: 100),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children:
-                          days[_currentWeekIndex].map((date) {
-                            final bool isCurrentMonth = date.month == currentMonth.month;
-                            final bool isSelected =
-                                date.year == selectedDate.year &&
-                                date.month == selectedDate.month &&
-                                date.day == selectedDate.day;
-
-                            return Expanded(child: buildDateContainer(date, isSelected, isCurrentMonth));
-                          }).toList(),
-                    ),
-                  ),
-              ],
+      padding: EdgeInsets.symmetric(horizontal: widget.isInAppBar ? 0 : HORIZONTAL_PADDING),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!widget.isInAppBar || !widget.forceWeekView)
+            // Day of week headers - not needed in collapsed app bar
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children:
+                    const ["S", "M", "T", "W", "T", "F", "S"]
+                        .map(
+                          (day) => Expanded(
+                            child: Text(
+                              day,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey),
+                            ),
+                          ),
+                        )
+                        .toList(),
+              ),
             ),
-          ),
-        ),
+
+          // Calendar content - either full calendar or just current week
+          if (showFullCalendar)
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children:
+                  days.asMap().entries.map((entry) {
+                    int weekIndex = entry.key;
+                    List<DateTime> week = entry.value;
+                    bool isLastWeek = weekIndex == days.length - 1;
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children:
+                              week.map((date) {
+                                final bool isCurrentMonth = date.month == currentMonth.month;
+                                final bool isSelected =
+                                    date.year == selectedDate.year &&
+                                    date.month == selectedDate.month &&
+                                    date.day == selectedDate.day;
+
+                                return Expanded(child: buildDateContainer(date, isSelected, isCurrentMonth));
+                              }).toList(),
+                        ),
+                        if (!isLastWeek)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Divider(height: 1, color: Theme.of(context).dividerColor.withAlpha(50)),
+                          ),
+                      ],
+                    );
+                  }).toList(),
+            )
+          else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children:
+                  days[_currentWeekIndex].map((date) {
+                    final bool isCurrentMonth = date.month == currentMonth.month;
+                    final bool isSelected =
+                        date.year == selectedDate.year &&
+                        date.month == selectedDate.month &&
+                        date.day == selectedDate.day;
+
+                    return Expanded(child: buildDateContainer(date, isSelected, isCurrentMonth));
+                  }).toList(),
+            ),
+        ],
       ),
     );
   }

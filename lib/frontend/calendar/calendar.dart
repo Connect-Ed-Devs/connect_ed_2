@@ -1,6 +1,4 @@
-import 'dart:math';
-import 'package:connect_ed_2/frontend/calendar/calendar_widget.dart';
-import 'package:connect_ed_2/frontend/setup/app_bar.dart';
+import 'package:connect_ed_2/frontend/calendar/calendar_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
@@ -65,119 +63,99 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     });
   }
 
-  // Add method to calculate calendar height
-  double _getCalendarHeight(DateTime month) {
-    final firstDay = DateTime(month.year, month.month, 1);
-    final lastDay = DateTime(month.year, month.month + 1, 0);
-
-    final firstDayOffset = firstDay.weekday % 7;
-    final lastDayOffset = lastDay.weekday % 7;
-
-    final daysToShow = firstDayOffset + lastDay.day + (6 - lastDayOffset);
-    final weekCount = (daysToShow / 7).ceil();
-
-    const double SINGLE_WEEK_HEIGHT = 40.0; // Match updated widget constant
-    const double HEADER_HEIGHT = 32.0; // Match updated widget constant
-    const double TOTAL_VERTICAL_PADDING = 0.0; // Increased padding
-
-    return HEADER_HEIGHT + (SINGLE_WEEK_HEIGHT * weekCount) + TOTAL_VERTICAL_PADDING;
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Calculate the maximum height needed for the current month
-    final double maxCalendarHeight = _getCalendarHeight(_currentMonth);
-
     return Scaffold(
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
-          // App bar with month title and navigation
-          CEAppBar(
+          // Use the specialized calendar app bar
+          CECalendarAppBar(
             title: _monthFormatter.format(_currentMonth),
-            trailingAction: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Custom opacity buttons for month navigation
-                OpacityIconButton(icon: Icons.arrow_back_ios, onPressed: _previousMonth),
-                OpacityIconButton(icon: Icons.arrow_forward_ios, onPressed: _nextMonth),
-              ],
-            ),
-            // When collapsed, show month + day
             collapsedTitle: _dateFormatter.format(_selectedDate),
-          ),
-
-          SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-          // Update the SliverPersistentHeader with dynamic maxHeight
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _SliverHeaderDelegate(
-              minHeight: 64,
-              maxHeight: maxCalendarHeight,
-              child: CalendarMonthProvider(
-                currentMonth: _currentMonth,
-                selectedDate: _selectedDate,
-                onDateSelected: _onDateSelected,
-                child: const CalendarWidget(),
-              ),
-            ),
+            currentMonth: _currentMonth,
+            selectedDate: _selectedDate,
+            onDateSelected: _onDateSelected,
+            onPreviousMonth: _previousMonth,
+            onNextMonth: _nextMonth,
+            scrollController: _scrollController,
           ),
 
           // Content below calendar
           SliverToBoxAdapter(
             child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    "Events for ${_dateFormatter.format(_selectedDate)}",
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  // Example events
-                  for (int i = 0; i < 10; i++)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
-                      child: Container(
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[900],
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2, offset: const Offset(0, 1)),
-                          ],
-                        ),
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 4,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary,
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text("Event $i", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                  Text(
-                                    "Event details for ${_dateFormatter.format(_selectedDate)}",
-                                    style: TextStyle(color: Colors.grey[600]),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                  Text("Schedule", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+                  SizedBox(height: 16),
+                  Column(
+                    children: [
+                      Flex(
+                        direction: Axis.horizontal,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(flex: 1, child: Text("8"), fit: FlexFit.tight),
+                          Flexible(flex: 2, child: Text("AM"), fit: FlexFit.tight),
+                          Flexible(
+                            flex: 15,
+                            child: Divider(color: Theme.of(context).colorScheme.onSurface.withAlpha(50)),
+                          ),
+                        ],
                       ),
-                    ),
+                      SizedBox(height: 32),
+                      Flex(
+                        direction: Axis.horizontal,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(flex: 1, child: Text("9"), fit: FlexFit.tight),
+                          Flexible(flex: 2, child: Text("AM"), fit: FlexFit.tight),
+                          Flexible(
+                            flex: 15,
+                            child: Divider(color: Theme.of(context).colorScheme.onSurface.withAlpha(50)),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 32),
+                      Flex(
+                        direction: Axis.horizontal,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(flex: 1, child: Text("10"), fit: FlexFit.tight),
+                          Flexible(flex: 2, child: Text("AM"), fit: FlexFit.tight),
+                          Flexible(
+                            flex: 15,
+                            child: Divider(color: Theme.of(context).colorScheme.onSurface.withAlpha(50)),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 32),
+                      Flex(
+                        direction: Axis.horizontal,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(flex: 1, child: Text("11"), fit: FlexFit.tight),
+                          Flexible(flex: 2, child: Text("AM"), fit: FlexFit.tight),
+                          Flexible(
+                            flex: 15,
+                            child: Divider(color: Theme.of(context).colorScheme.onSurface.withAlpha(50)),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 32),
+                    ],
+                  ),
                 ],
               ),
+            ),
+          ),
+
+          // Add extra space at the bottom to ensure enough scrollable area
+          SliverToBoxAdapter(
+            child: SizedBox(
+              // This height ensures there's always enough content to scroll
+              height: MediaQuery.of(context).size.height * 0.7,
             ),
           ),
         ],
@@ -245,65 +223,5 @@ class _OpacityIconButtonState extends State<OpacityIconButton> {
         ),
       ),
     );
-  }
-}
-
-class _SliverHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _SliverHeaderDelegate({required this.minHeight, required this.maxHeight, required this.child});
-  final double minHeight;
-  final double maxHeight;
-  final Widget child;
-
-  @override
-  double get minExtent => minHeight;
-  @override
-  double get maxExtent => maxHeight;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // Calculate actual height and scroll progress
-    final double height = maxExtent - shrinkOffset.clamp(0.0, maxExtent - minExtent);
-    final double scrollProgress = shrinkOffset / (maxExtent - minExtent);
-
-    // Enforce strict bounds with SizedBox
-    return SizedBox(
-      height: height,
-      child: CalendarHeightProvider(
-        currentHeight: height,
-        maxHeight: maxHeight,
-        scrollProgress: scrollProgress.clamp(0.0, 1.0),
-        child: child,
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(_SliverHeaderDelegate oldDelegate) {
-    return maxHeight != oldDelegate.maxHeight || minHeight != oldDelegate.minHeight || child != oldDelegate.child;
-  }
-}
-
-class CalendarHeightProvider extends InheritedWidget {
-  final double currentHeight;
-  final double maxHeight;
-  final double scrollProgress; // 0.0 = expanded, 1.0 = collapsed
-
-  const CalendarHeightProvider({
-    Key? key,
-    required this.currentHeight,
-    required this.maxHeight,
-    required this.scrollProgress,
-    required Widget child,
-  }) : super(key: key, child: child);
-
-  static CalendarHeightProvider? of(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<CalendarHeightProvider>();
-  }
-
-  @override
-  bool updateShouldNotify(CalendarHeightProvider oldWidget) {
-    return currentHeight != oldWidget.currentHeight ||
-        maxHeight != oldWidget.maxHeight ||
-        scrollProgress != oldWidget.scrollProgress;
   }
 }
