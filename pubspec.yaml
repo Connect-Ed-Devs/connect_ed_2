@@ -40,6 +40,7 @@ dependencies:
     firebase_messaging: ^15.2.4
     firebase_crashlytics: ^4.3.4
     intl: ^0.17.0
+    flutter_sticky_header: ^0.7.0
 
 dev_dependencies:
     flutter_test:

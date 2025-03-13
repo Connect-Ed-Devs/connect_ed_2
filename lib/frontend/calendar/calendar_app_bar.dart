@@ -81,10 +81,9 @@ class CECalendarAppBar extends StatelessWidget {
             progress = progress.clamp(0.0, 1.0);
           }
 
-          // Calculate y-offsets for parallax effect (only for calendar)
+          // Calculate y-offsets for parallax effect
           final double calendarParallaxOffset = -150 * progress; // Calendar moves up faster
-
-          // Calculate week view position that stabilizes when mostly collapsed
+          final double titleParallaxOffset = -25 * progress; // Title moves up slightly
 
           return Stack(
             children: [
@@ -108,9 +107,9 @@ class CECalendarAppBar extends StatelessWidget {
                 ),
               ),
 
-              // Month title and navigation (when expanded) - stays fixed
+              // Month title and navigation (when expanded) - moves up slightly with scroll
               Positioned(
-                top: MediaQuery.of(context).padding.top + 10,
+                top: MediaQuery.of(context).padding.top + 10 + titleParallaxOffset, // Slight upward movement
                 left: 16,
                 right: 16,
                 child: Container(
@@ -151,7 +150,7 @@ class CECalendarAppBar extends StatelessWidget {
                         child: Text(collapsedTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                       ),
 
-                      // Week view - stabilizes in position when mostly collapsed
+                      // Week view - stabilizes in position
                       Container(
                         height: 30,
                         margin: EdgeInsets.only(top: 8), // Fixed margin
