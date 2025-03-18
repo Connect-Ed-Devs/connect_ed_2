@@ -1,4 +1,3 @@
-import 'dart:convert';
 import '../main.dart'; // Import to access global prefs
 
 /// Status of the cache data
@@ -8,7 +7,7 @@ enum CacheStatus {
   expired, // Data is expired (above large threshold)
 }
 
-class CacheManager {
+abstract class CacheManager {
   /// The key used for storing data in SharedPreferences
   final String cacheKey;
 
@@ -51,9 +50,15 @@ class CacheManager {
     return status.toString().split('.').last; // Converts 'CacheStatus.fresh' to 'fresh'
   }
 
+  Future<dynamic> fetchData();
+
+  String encodeData(dynamic data);
+
+  dynamic decodeData(String data);
+
   /// Stores data in the cache
-  void storeData(Map<String, dynamic> data) {
-    final jsonData = jsonEncode(data);
+  void storeData(Map<dynamic, dynamic> data) {
+    final jsonData = encodeData(data);
 
     // Update lastRecorded to current time
     lastRecorded = DateTime.now();
@@ -64,7 +69,7 @@ class CacheManager {
   }
 
   /// Gets cached data if available and not expired
-  Map<String, dynamic>? getCachedData() {
+  dynamic getCachedData() {
     final jsonData = prefs.getString(cacheKey);
 
     if (jsonData == null) return null;
@@ -72,7 +77,7 @@ class CacheManager {
     // Only return the cached data if it's fresh or stale
     if (getCacheStatus() != CacheStatus.expired) {
       try {
-        return jsonDecode(jsonData) as Map<String, dynamic>;
+        return decodeData(jsonData);
       } catch (e) {
         return null;
       }
@@ -83,13 +88,4 @@ class CacheManager {
 
   /// Updates cache with new data from a provider function
   /// Throws any errors from the data provider function without fallback to cached data
-  Future<Map<String, dynamic>> updateCache(Future<Map<String, dynamic>> Function() dataProvider) async {
-    // Get new data from the provider - errors will propagate to caller
-    final newData = await dataProvider();
-
-    // Store in cache
-    storeData(newData);
-
-    return newData;
-  }
 }

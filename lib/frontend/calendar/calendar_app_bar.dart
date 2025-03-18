@@ -1,4 +1,5 @@
 import 'package:connect_ed_2/frontend/calendar/calendar.dart';
+import 'package:connect_ed_2/frontend/setup/opacity_button.dart';
 import 'package:flutter/material.dart';
 import 'package:connect_ed_2/frontend/calendar/calendar_widget.dart';
 
@@ -123,8 +124,8 @@ class CECalendarAppBar extends StatelessWidget {
                         Text(title, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w600)),
                         Row(
                           children: [
-                            _buildNavButton(Icons.arrow_back_ios, onPreviousMonth),
-                            _buildNavButton(Icons.arrow_forward_ios, onNextMonth),
+                            OpacityIconButton(icon: Icons.arrow_back_ios, onPressed: onPreviousMonth),
+                            OpacityIconButton(icon: Icons.arrow_forward_ios, onPressed: onNextMonth),
                           ],
                         ),
                       ],
