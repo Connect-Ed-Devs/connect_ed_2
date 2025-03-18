@@ -20,6 +20,11 @@ Future<void> main() async {
   // Initialize SharedPreferences before running app
   prefs = await SharedPreferences.getInstance();
 
+  prefs.setString(
+    'calendar_link',
+    'https://appleby.myschoolapp.com/podium/feed/iCal.aspx?z=rwbg9TXaxP2HmddvSTQ7hag8xBZbtW85mYDkAvSRgQWHFAQLrIAjDzM8j%2ffMmkZ75F1qvYGSl1lZiVeFaSZ4AA%3d%3d',
+  );
+
   runApp(const MyApp());
 }
 
@@ -47,7 +52,10 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: darkScheme,
+        colorScheme:
+            MediaQuery.of(context).platformBrightness == Brightness.dark
+                ? darkScheme // Use dark scheme when system theme is dark
+                : lightScheme, // Use light scheme when system theme is light
         fontFamily: 'Montserrat',
         useMaterial3: true,
       ),
