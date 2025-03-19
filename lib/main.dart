@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:connect_ed_2/frontend/articles/articles.dart';
 import 'package:connect_ed_2/frontend/calendar/calendar.dart';
 import 'package:connect_ed_2/frontend/events/events.dart';
@@ -9,11 +7,24 @@ import 'package:connect_ed_2/frontend/setup/styles.dart';
 import 'package:connect_ed_2/frontend/sports/sports.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase/firebase_options.dart';
+
+// Global SharedPreferences instance
+late SharedPreferences prefs;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize SharedPreferences before running app
+  prefs = await SharedPreferences.getInstance();
+
+  prefs.setString(
+    'calendar_link',
+    'https://appleby.myschoolapp.com/podium/feed/iCal.aspx?z=rwbg9TXaxP2HmddvSTQ7hag8xBZbtW85mYDkAvSRgQWHFAQLrIAjDzM8j%2ffMmkZ75F1qvYGSl1lZiVeFaSZ4AA%3d%3d',
+  );
+
   runApp(const MyApp());
 }
 
@@ -41,7 +52,10 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: darkScheme,
+        colorScheme:
+            MediaQuery.of(context).platformBrightness == Brightness.dark
+                ? darkScheme // Use dark scheme when system theme is dark
+                : lightScheme, // Use light scheme when system theme is light
         fontFamily: 'Montserrat',
         useMaterial3: true,
       ),
@@ -69,19 +83,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
   int _selectedIndex = 0;
 
   List<Widget> pages = [HomePage(), CalendarPage(), EventsPage(), SportsPage(), ArticlesPage()];
