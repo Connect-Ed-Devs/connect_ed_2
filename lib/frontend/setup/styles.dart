@@ -5,7 +5,7 @@ ColorScheme lightScheme = const ColorScheme(
   primary: Color.fromARGB(255, 0, 66, 112),
   onPrimary: Colors.white,
   secondary: Color.fromARGB(255, 160, 207, 235),
-  tertiary: Color.fromARGB(255, 217, 217, 217),
+  tertiary: Color.fromARGB(255, 231, 231, 231),
 
   onSecondary: Colors.black,
   error: Color.fromARGB(255, 241, 114, 114),

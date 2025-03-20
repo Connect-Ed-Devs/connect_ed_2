@@ -45,6 +45,7 @@ dependencies:
     http: ^1.3.0
     icalendar: ^0.1.3
     icalendar_parser: ^2.1.0
+    carousel_slider: ^5.0.0
 
 dev_dependencies:
     flutter_test:
