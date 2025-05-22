@@ -30,9 +30,9 @@ class CENavBar extends StatelessWidget {
                   children: [
                     _buildNavItem(context, Icons.home_outlined, Icons.home, 0),
                     _buildNavItem(context, Icons.calendar_today_outlined, Icons.calendar_today, 1),
-                    _buildNavItem(context, Icons.stadium_outlined, Icons.stadium, 2),
-                    _buildNavItem(context, Icons.sports_basketball_outlined, Icons.sports_basketball, 3),
-                    _buildNavItem(context, Icons.article_outlined, Icons.article, 4),
+                    // _buildNavItem(context, Icons.stadium_outlined, Icons.stadium, 2),
+                    _buildNavItem(context, Icons.sports_basketball_outlined, Icons.sports_basketball, 2),
+                    // _buildNavItem(context, Icons.article_outlined, Icons.article, 4),
                   ],
                 ),
               ),

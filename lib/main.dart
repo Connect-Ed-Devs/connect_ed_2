@@ -85,7 +85,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
 
-  List<Widget> pages = [HomePage(), CalendarPage(), EventsPage(), SportsPage(), ArticlesPage()];
+  List<Widget> pages = [HomePage(), CalendarPage(), SportsPage()];
 
   @override
   Widget build(BuildContext context) {
