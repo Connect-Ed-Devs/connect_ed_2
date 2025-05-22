@@ -27,16 +27,10 @@ class CEAppBar extends StatelessWidget {
       toolbarHeight: 35,
       pinned: true,
       elevation: 0,
+      automaticallyImplyLeading: false,
       backgroundColor: Theme.of(context).colorScheme.surface,
-      // Remove default title to avoid conflicts
       title: const SizedBox.shrink(),
-      leading:
-          showBackButton
-              ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
-              )
-              : null,
+      // Remove the leading property completely
       flexibleSpace: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
           // Calculate progress directly from constraints
@@ -59,12 +53,11 @@ class CEAppBar extends StatelessWidget {
           final largeTitleOpacity = (1.0 - progress).clamp(0.0, 1.0);
           final smallTitleOpacity = progress.clamp(0.0, 1.0);
 
-          final leftPaddingExpanded = showBackButton ? 40.0 : 16.0;
+          final leftPaddingExpanded = 16.0;
 
           return Container(
             width: constraints.maxWidth,
             height: constraints.maxHeight,
-            // Ensure background is always fully opaque
             color: Theme.of(context).colorScheme.surface,
             child: Stack(
               fit: StackFit.expand,
@@ -77,23 +70,27 @@ class CEAppBar extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          if (showBackButton && largeTitleOpacity > 0.1)
-                            Opacity(
-                              opacity: largeTitleOpacity,
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 8.0),
-                                child: Icon(Icons.arrow_back, size: 28),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            if (showBackButton)
+                              Opacity(
+                                opacity: largeTitleOpacity,
+                                child: IconButton(
+                                  icon: const Icon(Icons.arrow_back_ios),
+                                  onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
+                                  iconSize: 36,
+                                ),
+                              ),
+                            Expanded(
+                              child: Opacity(
+                                opacity: largeTitleOpacity,
+                                child: Text(title, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w600)),
                               ),
                             ),
-                          Opacity(
-                            opacity: largeTitleOpacity,
-                            child: Text(title, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w600)),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      // Spacer(),
                       Opacity(opacity: largeTitleOpacity, child: trailingAction ?? const SizedBox.shrink()),
                     ],
                   ),
@@ -107,11 +104,34 @@ class CEAppBar extends StatelessWidget {
                   child: AnimatedOpacity(
                     opacity: smallTitleOpacity,
                     duration: const Duration(milliseconds: 100),
-                    child: Center(
-                      child: Text(
-                        smallTitle, // Use the potentially different collapsed title
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                      ),
+                    child: Flex(
+                      direction: Axis.horizontal,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          fit: FlexFit.tight,
+                          child:
+                              showBackButton
+                                  ? IconButton(
+                                    icon: const Icon(Icons.arrow_back_ios, size: 18),
+                                    onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    visualDensity: VisualDensity.compact,
+                                  )
+                                  : const SizedBox.shrink(),
+                        ),
+                        Flexible(
+                          flex: 5,
+                          fit: FlexFit.tight,
+                          child: Text(
+                            smallTitle,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        Flexible(child: SizedBox.shrink(), fit: FlexFit.tight),
+                      ],
                     ),
                   ),
                 ),

@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:connect_ed_2/classes/assessment.dart';
 import 'package:connect_ed_2/classes/calendar_item.dart';
 import 'package:connect_ed_2/classes/schedule_item.dart';
 import 'package:connect_ed_2/frontend/calendar/calendar_app_bar.dart';
@@ -21,6 +22,9 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   // Controller to help manage scrolling
   final ScrollController _scrollController = ScrollController();
 
+  // Page controller for horizontal day swiping
+  late PageController _dayPageController;
+
   // Track current month and selected date
   DateTime _currentMonth = DateTime.now();
   DateTime _selectedDate = DateTime.now();
@@ -28,6 +32,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   // Month formatter
   final DateFormat _monthFormatter = DateFormat('MMMM');
   final DateFormat _dateFormatter = DateFormat('MMMM dd, yyyy');
+  final DateFormat _dayFormatter = DateFormat('EEE, MMM d'); // For day display
 
   // Data variables
   Map<DateTime, CalendarItem>? _calendarData;
@@ -41,7 +46,23 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
+
+    // Initialize page controller with initial date
+    _dayPageController = PageController(initialPage: 500); // Start at middle to allow for past/future swiping
+
     _loadCalendarData();
+  }
+
+  // Calculate page index from a date
+  int _getPageIndexFromDate(DateTime date) {
+    // Calculate the difference in days between the date and today
+    return 500 + date.difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)).inDays;
+  }
+
+  // Calculate date from page index
+  DateTime _getDateFromPageIndex(int index) {
+    // Page 500 is today, each page is +/- 1 day
+    return DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day).add(Duration(days: index - 500));
   }
 
   void _loadCalendarData() {
@@ -121,6 +142,19 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     return [];
   }
 
+  // Get assessments for the selected date
+  List<Assessment> _getAssessmentsForSelectedDate() {
+    if (_calendarData == null) return [];
+
+    // Create a normalized date key (without time component)
+    final normalizedDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+
+    if (_calendarData!.containsKey(normalizedDate)) {
+      return _calendarData![normalizedDate]!.assessments;
+    }
+    return [];
+  }
+
   void _updateScheduleTimeRange() {
     final scheduleItems = _getScheduleForSelectedDate();
 
@@ -157,6 +191,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   @override
   void dispose() {
     _scrollController.dispose();
+    _dayPageController.dispose();
     super.dispose();
   }
 
@@ -184,17 +219,48 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     });
   }
 
+  void _updateSelectedDateFromPage(int pageIndex) {
+    final newDate = _getDateFromPageIndex(pageIndex);
+
+    // Only update if the date actually changed
+    if (newDate.year != _selectedDate.year ||
+        newDate.month != _selectedDate.month ||
+        newDate.day != _selectedDate.day) {
+      setState(() {
+        _selectedDate = newDate;
+
+        // If the date is from a different month, update the current month
+        if (_selectedDate.month != _currentMonth.month) {
+          _currentMonth = DateTime(_selectedDate.year, _selectedDate.month, 1);
+        }
+
+        // Update schedule time range based on the new selected date
+        _updateScheduleTimeRange();
+      });
+    }
+  }
+
   // Update the selected date (called from calendar widget)
   void _onDateSelected(DateTime date) {
-    setState(() {
-      _selectedDate = date;
-      // If the date is from a different month, update the current month
-      if (_selectedDate.month != _currentMonth.month) {
-        _currentMonth = DateTime(_selectedDate.year, _selectedDate.month, 1);
-      }
-      // Update schedule time range based on the new selected date
-      _updateScheduleTimeRange();
-    });
+    // If date is different, update it
+    if (date.year != _selectedDate.year || date.month != _selectedDate.month || date.day != _selectedDate.day) {
+      // Update the state first
+      setState(() {
+        _selectedDate = date;
+        // If the date is from a different month, update the current month
+        if (_selectedDate.month != _currentMonth.month) {
+          _currentMonth = DateTime(_selectedDate.year, _selectedDate.month, 1);
+        }
+        // Update schedule time range based on the new selected date
+        _updateScheduleTimeRange();
+      });
+
+      // Use correct page index and JUMP to it instead of animating
+      final pageIndex = _getPageIndexFromDate(date);
+
+      // Use jumpToPage instead of animateToPage to avoid sliding transition
+      _dayPageController.jumpToPage(pageIndex);
+    }
   }
 
   // Build the time slots for the schedule
@@ -248,9 +314,11 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     }
 
     if (scheduleItems.isEmpty) {
+      // Smaller, more compact "No schedule" message
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 48.0),
+        child: Container(
+          height: 100, // Fixed smaller height
+          alignment: Alignment.center,
           child: Text(
             "No schedule for this day",
             style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurface.withAlpha(150)),
@@ -259,13 +327,35 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
       );
     }
 
-    return Stack(
-      children: [
-        // Time slots as the background
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: _buildTimeSlots()),
+    // Fixed height approach without clipping
+    const double HOUR_HEIGHT = 57.0;
+    final int totalScheduleHours = _scheduleEndTime.hour - _scheduleStartTime.hour + 1;
 
-        // Schedule items overlayed on time slots
-        ...scheduleItems.map((item) => _buildScheduleItemWidget(item)).toList(),
+    // Get all time slots first
+    List<Widget> timeSlots = _buildTimeSlots();
+
+    return ListView(
+      padding: EdgeInsets.zero, // Remove default padding from ListView
+      // Make sure the ListView doesn't scroll - parent controls scrolling
+      physics: NeverScrollableScrollPhysics(),
+      children: [
+        // Use a container with relative positioning for schedule layout
+        Container(
+          width: double.infinity,
+          // Set the height to a value that can fit all time slots
+          height: totalScheduleHours * HOUR_HEIGHT + 40, // Add extra padding
+          child: Stack(
+            fit: StackFit.loose, // Don't constrain children tightly
+            clipBehavior: Clip.none, // Don't clip any overflows
+            children: [
+              // Place time slots in a regular column
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: timeSlots),
+
+              // Add each schedule item with Positioned
+              ...scheduleItems.map((item) => _buildScheduleItemWidget(item)),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -332,23 +422,79 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   }
 
   Widget _buildScheduleSection() {
-    // Use a smaller fixed height for loading or empty states
+    const double HOUR_HEIGHT = 57.0;
+    final int totalScheduleHours = _scheduleEndTime.hour - _scheduleStartTime.hour + 1;
+
+    // Calculate appropriate height - smaller for empty schedule
     final scheduleItems = _getScheduleForSelectedDate();
+    final double containerHeight =
+        scheduleItems.isEmpty
+            ? 100 // Smaller height for empty schedule
+            : totalScheduleHours * HOUR_HEIGHT + 40;
 
-    // Use a default height of 100 pixels for empty states or loading
-    double totalScheduleHeight = 100.0;
+    return SliverStickyHeader(
+      header: Container(
+        padding: const EdgeInsets.only(top: 24, left: 16.0, bottom: 0.0), // Explicitly set bottom padding to 0.0
+        color: Theme.of(context).colorScheme.surface,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // Ensure column takes minimum vertical space
+          children: [
+            const Text("Schedule", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
 
-    // Only calculate full height when we have schedule items
-    if (!_isLoading && scheduleItems.isNotEmpty) {
-      final int totalScheduleHours = _scheduleEndTime.hour - _scheduleStartTime.hour + 1;
-      totalScheduleHeight = totalScheduleHours * 57.0; // Match your HOUR_HEIGHT constant
+            // Simple non-animated date display
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
+              child: Text(
+                _dayFormatter.format(_selectedDate),
+                style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurface.withAlpha(180)),
+              ),
+            ),
+          ],
+        ),
+      ),
+      sliver: SliverToBoxAdapter(
+        child: Container(
+          padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 0.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: containerHeight, // Dynamic height based on content
+                width: double.infinity,
+                child: PageView.builder(
+                  physics: const PageScrollPhysics(),
+                  controller: _dayPageController,
+                  onPageChanged: _updateSelectedDateFromPage,
+                  itemBuilder: (context, index) {
+                    final currentDate = _selectedDate;
+                    _selectedDate = _getDateFromPageIndex(index);
+                    final widget = _buildScheduleItems();
+                    _selectedDate = currentDate;
+                    return widget;
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAssessmentsSection() {
+    final assessments = _getAssessmentsForSelectedDate();
+
+    // Return null if there are no assessments - this will cause the section not to be displayed
+    if (assessments.isEmpty && !_isLoading) {
+      return SliverToBoxAdapter(child: SizedBox.shrink());
     }
 
     return SliverStickyHeader(
       header: Container(
-        padding: const EdgeInsets.only(top: 30, left: 16.0),
+        padding: const EdgeInsets.only(left: 16.0),
         color: Theme.of(context).colorScheme.surface,
-        child: const Text("Schedule", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+        child: const Text("Assessments", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
       ),
       sliver: SliverToBoxAdapter(
         child: Container(
@@ -356,10 +502,47 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 16),
+              const SizedBox(height: 8), // Reduced spacing here
 
-              // Show the schedule with appropriate height
-              SizedBox(height: totalScheduleHeight, width: double.infinity, child: _buildScheduleItems()),
+              if (_isLoading)
+                const Center(
+                  child: Padding(padding: EdgeInsets.symmetric(vertical: 24.0), child: CircularProgressIndicator()),
+                )
+              else
+                ListView.separated(
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: assessments.length,
+                  padding: EdgeInsets.zero, // Remove any padding
+                  separatorBuilder:
+                      (context, index) => Divider(height: 1, color: Theme.of(context).colorScheme.tertiary),
+                  itemBuilder: (context, index) {
+                    final assessment = assessments[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0), // Reduced padding
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(assessment.title, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                Text(
+                                  assessment.className,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Theme.of(context).colorScheme.onSurface.withAlpha(180),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         ),
@@ -369,6 +552,9 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    final assessments = _getAssessmentsForSelectedDate();
+    final bool hasAssessments = assessments.isNotEmpty || _isLoading;
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () async {
@@ -412,8 +598,20 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
             // Schedule section
             _buildScheduleSection(),
 
-            // Add extra space at the bottom to ensure enough scrollable area
-            SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).size.height * 0.2)),
+            // Only include assessments section if there are assessments
+            if (hasAssessments) _buildAssessmentsSection(),
+
+            // Add expandable space to ensure app bar can fully collapse
+            SliverFillRemaining(
+              hasScrollBody: false,
+              fillOverscroll: true,
+              child: Container(
+                // This ensures there's enough content to scroll
+                // so the app bar can fully collapse
+                height: MediaQuery.of(context).size.height * 0.6,
+                color: Colors.transparent,
+              ),
+            ),
           ],
         ),
       ),
