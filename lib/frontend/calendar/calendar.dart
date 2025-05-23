@@ -444,7 +444,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
 
             // Simple non-animated date display
             Padding(
-              padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
+              padding: const EdgeInsets.only(top: 4.0, bottom: 16.0),
               child: Text(
                 _dayFormatter.format(_selectedDate),
                 style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurface.withAlpha(180)),

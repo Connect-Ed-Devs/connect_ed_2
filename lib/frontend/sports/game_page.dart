@@ -1,5 +1,8 @@
 import 'package:connect_ed_2/classes/game.dart';
 import 'package:connect_ed_2/frontend/setup/app_bar.dart';
+import 'package:connect_ed_2/frontend/sports/game_widgets.dart'; // Added for GameWidget
+import 'package:connect_ed_2/frontend/sports/standings.dart'; // Added for StandingsTable
+import 'package:connect_ed_2/classes/standings_item.dart'; // Added for StandingsItem
 import 'package:flutter/material.dart';
 
 enum GameInfoSegment { standings, upcomingGames }
@@ -30,6 +33,74 @@ class GamePage extends StatefulWidget {
 
 class _GamePageState extends State<GamePage> {
   GameInfoSegment _selectedSegment = GameInfoSegment.upcomingGames;
+
+  // Dummy data for upcoming games
+  final List<Game> _upcomingGames = List.generate(
+    5,
+    (index) => Game(
+      homeTeam: "Team ${String.fromCharCode(65 + index + 5)}", // Different teams for upcoming
+      homeabbr: "T${String.fromCharCode(65 + index + 5)}",
+      homeLogo: "assets/team_b_logo.png", // Placeholder logo
+      awayTeam: "Team ${String.fromCharCode(70 + index + 5)}",
+      awayabbr: "T${String.fromCharCode(70 + index + 5)}",
+      awayLogo: "assets/team_a_logo.png", // Placeholder logo
+      date: DateTime.now().add(Duration(days: index + 7)), // Further in future
+      time: "${5 + index}:30 PM",
+      homeScore: "-",
+      awayScore: "-",
+      sportsID: 1,
+      sportsName: "Football",
+      term: "Fall 2023",
+      leagueCode: "NCAA",
+    ),
+  );
+
+  // Dummy data for standings
+  final List<StandingsItem> _standingsData = List.generate(
+    5,
+    (index) => StandingsItem(
+      rank: index + 1,
+      teamName: "Team ${String.fromCharCode(65 + index)}", // Corresponds to pageGame teams if A=Eagles, B=Tigers etc.
+      teamAbbreviation: "T${String.fromCharCode(65 + index)}",
+      wins: 10 - index * 2,
+      losses: index + 1,
+      ties: index % 2, // some ties
+      matchesPlayed: 10 - index * 2 + index + 1 + (index % 2),
+      points: (10 - index * 2) * 3 + (index % 2), // 3 for win, 1 for tie
+    ),
+  );
+
+  Widget _buildUpcomingGamesContent() {
+    return Container(
+      height: 190,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        // Add padding here if you want space around the list itself
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        itemCount: _upcomingGames.length,
+        itemBuilder: (context, index) {
+          return Padding(
+            // Padding for individual GameWidget
+            padding: const EdgeInsets.only(right: 16),
+            child: GameWidget(game: _upcomingGames[index]),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStandingsContent() {
+    // StandingsTable likely handles its own internal padding for rows/header.
+    // Add padding here if the whole table needs to be inset.
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding if needed
+      child: StandingsTable(
+        standings: _standingsData,
+        homeTeamName: widget.pageGame.homeTeam,
+        opposingTeamName: widget.pageGame.awayTeam,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +261,7 @@ class _GamePageState extends State<GamePage> {
           SliverToBoxAdapter(
             child: Container(
               // Remove horizontal padding to allow SegmentedButton to go edge-to-edge
-              padding: const EdgeInsets.symmetric(vertical: 24.0),
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
               margin: EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
@@ -232,17 +303,35 @@ class _GamePageState extends State<GamePage> {
             ),
             // Placeholder for content based on selected segment
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Center(
-                child:
-                    _selectedSegment == GameInfoSegment.upcomingGames
-                        ? Text('Upcoming Games Content Placeholder')
-                        : Text('Standings Content Placeholder', style: Theme.of(context).textTheme.titleMedium),
+          if (_selectedSegment == GameInfoSegment.upcomingGames)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 8, bottom: 8.0),
+                child: Text(
+                  "Upcoming Games",
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w500),
+                ),
               ),
             ),
+          if (_selectedSegment == GameInfoSegment.standings)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 8, bottom: 8.0),
+                child: Text(
+                  "Standings",
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w500),
+                ),
+              ),
+            ),
+          SliverToBoxAdapter(
+            child:
+                _selectedSegment == GameInfoSegment.upcomingGames
+                    ? _buildUpcomingGamesContent()
+                    : _buildStandingsContent(),
           ),
+          SliverToBoxAdapter(
+            child: SizedBox(height: MediaQuery.of(context).viewPadding.bottom + 24),
+          ), // Ensure space at bottom
         ],
       ),
     );

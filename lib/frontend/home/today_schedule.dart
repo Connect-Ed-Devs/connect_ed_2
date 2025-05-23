@@ -245,7 +245,7 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       ), // This acts as the persistent header
       titlePadding: EdgeInsets.all(16), // Control padding around the title
-      insetPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0), // Control padding around the dialog
+      insetPadding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 24.0), // Control padding around the dialog
       contentPadding: EdgeInsets.zero, // Remove default padding to control it with SizedBox
       content: SizedBox(
         // Width will be constrained by AlertDialog's insetPadding and its default behavior to expand.
