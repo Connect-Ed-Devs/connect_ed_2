@@ -241,8 +241,8 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
 
     return AlertDialog(
       title: Text(
-        _dayFormatter.format(widget.dateToShow),
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+        "Today",
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       ), // This acts as the persistent header
       titlePadding: EdgeInsets.all(16), // Control padding around the title
       insetPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0), // Control padding around the dialog

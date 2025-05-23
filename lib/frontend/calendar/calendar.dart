@@ -389,7 +389,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
             child: Container(
               height: height,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withAlpha(220),
+                color: Theme.of(context).colorScheme.primary.withAlpha(240),
                 border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
                 borderRadius: BorderRadius.circular(4),
               ),

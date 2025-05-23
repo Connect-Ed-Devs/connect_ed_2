@@ -9,7 +9,7 @@ class CENavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final navBarHeight = 36 + MediaQuery.of(context).padding.bottom;
+    final navBarHeight = 24 + MediaQuery.of(context).padding.bottom;
 
     return Container(
       decoration: BoxDecoration(

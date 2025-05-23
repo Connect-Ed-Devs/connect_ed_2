@@ -1,9 +1,11 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:connect_ed_2/classes/game.dart';
+import 'package:connect_ed_2/classes/standings_item.dart';
 import 'package:connect_ed_2/frontend/setup/app_bar.dart';
 import 'package:connect_ed_2/frontend/setup/opacity_button.dart';
 import 'package:connect_ed_2/frontend/sports/game_widgets.dart';
 import 'package:connect_ed_2/frontend/sports/otw.dart';
+import 'package:connect_ed_2/frontend/sports/standings.dart';
 import 'package:flutter/material.dart';
 
 class SportsPage extends StatefulWidget {
@@ -173,6 +175,217 @@ class _SportsPageState extends State<SportsPage> {
               ),
             ),
           ),
+          SliverToBoxAdapter(child: SizedBox(height: 32)),
+          SliverToBoxAdapter(
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text("Recent", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+                  OpacityTextButton(text: "View More", onPressed: () {}),
+                ],
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Container(
+              height: 190,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: 5,
+                itemBuilder: (context, index) {
+                  // Define 5 unique games
+                  final List<Game> games = [
+                    Game(
+                      homeTeam: "Eagles",
+                      homeabbr: "EAG",
+                      homeLogo: "assets/team_a_logo.png",
+                      awayTeam: "Tigers",
+                      awayabbr: "TIG",
+                      awayLogo: "assets/team_b_logo.png",
+                      date: DateTime.now().add(Duration(days: 2)),
+                      time: "6:30 PM",
+                      homeScore: "24",
+                      awayScore: "21",
+                      sportsID: 1,
+                      sportsName: "Football",
+                      term: "Fall 2023",
+                      leagueCode: "NCAA",
+                    ),
+                    Game(
+                      homeTeam: "Warriors",
+                      homeabbr: "WAR",
+                      homeLogo: "assets/team_a_logo.png",
+                      awayTeam: "Bulls",
+                      awayabbr: "BUL",
+                      awayLogo: "assets/team_b_logo.png",
+                      date: DateTime.now().add(Duration(days: 5)),
+                      time: "7:00 PM",
+                      homeScore: "85",
+                      awayScore: "79",
+                      sportsID: 2,
+                      sportsName: "Basketball",
+                      term: "Fall 2023",
+                      leagueCode: "NCAA",
+                    ),
+                    Game(
+                      homeTeam: "Lions",
+                      homeabbr: "LIO",
+                      homeLogo: "assets/team_a_logo.png",
+                      awayTeam: "Cobras",
+                      awayabbr: "COB",
+                      awayLogo: "assets/team_b_logo.png",
+                      date: DateTime.now().add(Duration(days: 1)),
+                      time: "5:00 PM",
+                      homeScore: "2",
+                      awayScore: "1",
+                      sportsID: 3,
+                      sportsName: "Soccer",
+                      term: "Fall 2023",
+                      leagueCode: "NCAA",
+                    ),
+                    Game(
+                      homeTeam: "Sharks",
+                      homeabbr: "SHK",
+                      homeLogo: "assets/team_a_logo.png",
+                      awayTeam: "Wolves",
+                      awayabbr: "WLV",
+                      awayLogo: "assets/team_b_logo.png",
+                      date: DateTime.now().add(Duration(days: 3)),
+                      time: "4:15 PM",
+                      homeScore: "3",
+                      awayScore: "0",
+                      sportsID: 4,
+                      sportsName: "Volleyball",
+                      term: "Fall 2023",
+                      leagueCode: "NCAA",
+                    ),
+                    Game(
+                      homeTeam: "Ravens",
+                      homeabbr: "RAV",
+                      homeLogo: "assets/team_a_logo.png",
+                      awayTeam: "Panthers",
+                      awayabbr: "PAN",
+                      awayLogo: "assets/team_b_logo.png",
+                      date: DateTime.now().add(Duration(days: 7)),
+                      time: "2:00 PM",
+                      homeScore: "5",
+                      awayScore: "3",
+                      sportsID: 5,
+                      sportsName: "Baseball",
+                      term: "Fall 2023",
+                      leagueCode: "NCAA",
+                    ),
+                  ];
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+                    child: GameWidget(game: games[index]),
+                  );
+                },
+              ),
+            ),
+          ),
+
+          SliverToBoxAdapter(child: SizedBox(height: 32)),
+          SliverToBoxAdapter(
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text("Standings", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+            ),
+          ),
+          SliverToBoxAdapter(child: SizedBox(height: 16)),
+          SliverToBoxAdapter(
+            child: StandingsTable(
+              homeTeamName: "Eagles",
+              opposingTeamName: "Tigers",
+              standings: [
+                StandingsItem(
+                  rank: 1,
+                  teamName: "Eagles",
+                  teamAbbreviation: "EAG",
+                  wins: 10,
+                  losses: 2,
+                  ties: 0,
+                  matchesPlayed: 12,
+                  points: 30,
+                ),
+                StandingsItem(
+                  rank: 2,
+                  teamName: "Tigers",
+                  teamAbbreviation: "TIG",
+                  wins: 8,
+                  losses: 3,
+                  ties: 1,
+                  matchesPlayed: 12,
+                  points: 25,
+                ),
+                StandingsItem(
+                  rank: 3,
+                  teamName: "Warriors",
+                  teamAbbreviation: "WAR",
+                  wins: 7,
+                  losses: 4,
+                  ties: 1,
+                  matchesPlayed: 12,
+                  points: 22,
+                ),
+                StandingsItem(
+                  rank: 4,
+                  teamName: "Bulls",
+                  teamAbbreviation: "BUL",
+                  wins: 6,
+                  losses: 6,
+                  ties: 0,
+                  matchesPlayed: 12,
+                  points: 18,
+                ),
+                StandingsItem(
+                  rank: 5,
+                  teamName: "Lions",
+                  teamAbbreviation: "LIO",
+                  wins: 5,
+                  losses: 5,
+                  ties: 2,
+                  matchesPlayed: 12,
+                  points: 17,
+                ),
+                StandingsItem(
+                  rank: 6,
+                  teamName: "Sharks",
+                  teamAbbreviation: "SHK",
+                  wins: 4,
+                  losses: 7,
+                  ties: 1,
+                  matchesPlayed: 12,
+                  points: 13,
+                ),
+                StandingsItem(
+                  rank: 7,
+                  teamName: "Ravens",
+                  teamAbbreviation: "RAV",
+                  wins: 3,
+                  losses: 9,
+                  ties: 0,
+                  matchesPlayed: 12,
+                  points: 9,
+                ),
+                StandingsItem(
+                  rank: 8,
+                  teamName: "Cobras",
+                  teamAbbreviation: "COB",
+                  wins: 2,
+                  losses: 8,
+                  ties: 2,
+                  matchesPlayed: 12,
+                  points: 8,
+                ),
+              ],
+            ),
+          ),
+          SliverToBoxAdapter(child: SizedBox(height: 64 + MediaQuery.of(context).padding.bottom)),
         ],
       ),
     );
