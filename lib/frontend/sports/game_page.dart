@@ -2,7 +2,9 @@ import 'package:connect_ed_2/classes/game.dart';
 import 'package:connect_ed_2/frontend/setup/app_bar.dart';
 import 'package:flutter/material.dart';
 
-class GamePage extends StatelessWidget {
+enum GameInfoSegment { standings, upcomingGames }
+
+class GamePage extends StatefulWidget {
   GamePage({super.key});
 
   final Game pageGame = Game(
@@ -21,12 +23,20 @@ class GamePage extends StatelessWidget {
     term: "Fall 2023",
     leagueCode: "NCAA",
   );
+
+  @override
+  State<GamePage> createState() => _GamePageState();
+}
+
+class _GamePageState extends State<GamePage> {
+  GameInfoSegment _selectedSegment = GameInfoSegment.upcomingGames;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          CEAppBar(title: "${pageGame.homeabbr} v ${pageGame.awayabbr}", showBackButton: true),
+          CEAppBar(title: "${widget.pageGame.homeabbr} v ${widget.pageGame.awayabbr}", showBackButton: true),
           SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,7 +78,7 @@ class GamePage extends StatelessWidget {
                             children: [
                               Container(width: 64, height: 60, color: Colors.blue),
                               Text(
-                                pageGame.homeabbr,
+                                widget.pageGame.homeabbr,
                                 style: TextStyle(
                                   color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
                                   fontSize: 16,
@@ -89,7 +99,7 @@ class GamePage extends StatelessWidget {
                           spacing: 16,
                           children: [
                             Text(
-                              '${pageGame.date.month}.${pageGame.date.day}.${pageGame.date.year} | ${pageGame.time}',
+                              '${widget.pageGame.date.month}.${widget.pageGame.date.day}.${widget.pageGame.date.year} | ${widget.pageGame.time}',
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
                                 fontSize: 12,
@@ -106,7 +116,7 @@ class GamePage extends StatelessWidget {
                                 spacing: 32,
                                 children: [
                                   Text(
-                                    pageGame.homeScore,
+                                    widget.pageGame.homeScore,
                                     style: TextStyle(
                                       fontSize: 24,
                                       fontFamily: 'Montserrat',
@@ -123,7 +133,7 @@ class GamePage extends StatelessWidget {
                                     ),
                                   ),
                                   Text(
-                                    pageGame.awayScore,
+                                    widget.pageGame.awayScore,
                                     style: TextStyle(
                                       fontSize: 24,
                                       fontFamily: 'Montserrat',
@@ -134,7 +144,7 @@ class GamePage extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              pageGame.sportsName.toUpperCase(),
+                              widget.pageGame.sportsName.toUpperCase(),
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
                                 fontSize: 12,
@@ -159,7 +169,7 @@ class GamePage extends StatelessWidget {
                             children: [
                               Container(width: 64, height: 60, color: Colors.blue),
                               Text(
-                                pageGame.awayabbr,
+                                widget.pageGame.awayabbr,
                                 style: TextStyle(
                                   color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
                                   fontSize: 16,
@@ -175,6 +185,62 @@ class GamePage extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Container(
+              // Remove horizontal padding to allow SegmentedButton to go edge-to-edge
+              padding: const EdgeInsets.symmetric(vertical: 24.0),
+              margin: EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SegmentedButton<GameInfoSegment>(
+                      segments: const <ButtonSegment<GameInfoSegment>>[
+                        ButtonSegment<GameInfoSegment>(
+                          value: GameInfoSegment.upcomingGames,
+                          label: Text('Upcoming', style: TextStyle(fontWeight: FontWeight.w500)),
+                        ),
+                        ButtonSegment<GameInfoSegment>(
+                          value: GameInfoSegment.standings,
+                          label: Text('Standings', style: TextStyle(fontWeight: FontWeight.w500)),
+                        ),
+                      ],
+                      selected: <GameInfoSegment>{_selectedSegment},
+                      onSelectionChanged: (Set<GameInfoSegment> newSelection) {
+                        setState(() {
+                          _selectedSegment = newSelection.first;
+                        });
+                      },
+                      style: SegmentedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.tertiary,
+                        selectedForegroundColor: Theme.of(context).colorScheme.onPrimary,
+                        selectedBackgroundColor: Theme.of(context).colorScheme.primary,
+                        textStyle: TextStyle(fontSize: 16, fontFamily: "Montserrat", fontWeight: FontWeight.w500),
+                        visualDensity: VisualDensity.standard,
+                        iconSize: 0, // Hides the checkmark icon
+                        side: BorderSide.none, // Removes the border
+                      ).copyWith(
+                        shape: MaterialStateProperty.all<OutlinedBorder>(
+                          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Placeholder for content based on selected segment
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Center(
+                child:
+                    _selectedSegment == GameInfoSegment.upcomingGames
+                        ? Text('Upcoming Games Content Placeholder')
+                        : Text('Standings Content Placeholder', style: Theme.of(context).textTheme.titleMedium),
+              ),
             ),
           ),
         ],

@@ -6,6 +6,7 @@ import 'package:connect_ed_2/classes/calendar_item.dart';
 import 'package:connect_ed_2/classes/game.dart';
 import 'package:connect_ed_2/classes/schedule_item.dart';
 import 'package:connect_ed_2/frontend/home/today_schedule.dart';
+import 'package:connect_ed_2/frontend/settings/settings.dart';
 import 'package:connect_ed_2/frontend/setup/app_bar.dart';
 import 'package:connect_ed_2/frontend/setup/opacity_button.dart';
 import 'package:connect_ed_2/frontend/sports/game_widgets.dart';
@@ -119,51 +120,68 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   // Find the next schedule item
   ScheduleItem? _getNextScheduleItem(Map<DateTime, CalendarItem> calendarData) {
+    print("--- _getNextScheduleItem called ---");
+    if (calendarData.isEmpty) {
+      print("Calendar data is empty.");
+      return null;
+    }
+
     final now = DateTime.now();
     final currentTime = TimeOfDay.fromDateTime(now);
+    print("Current DateTime: $now, Current TimeOfDay: $currentTime");
 
     // First check today's schedule
     final today = DateTime(now.year, now.month, now.day);
+    print("Checking for today's schedule: $today");
+
     if (calendarData.containsKey(today)) {
+      print("Found schedule for today.");
       final todaySchedule = List<ScheduleItem>.from(calendarData[today]!.schedule);
 
-      // Sort by start time
-      todaySchedule.sort((a, b) {
-        final aMinutes = a.startTime.hour * 60 + a.startTime.minute;
-        final bMinutes = b.startTime.hour * 60 + b.startTime.minute;
-        return aMinutes.compareTo(bMinutes);
-      });
-
-      // Find the next class today
-      for (final item in todaySchedule) {
-        final itemStartMinutes = item.startTime.hour * 60 + item.startTime.minute;
-        final currentMinutes = currentTime.hour * 60 + currentTime.minute;
-
-        if (itemStartMinutes > currentMinutes) {
-          return item; // This is the next class today
-        }
-      }
-    }
-
-    // If no class found today, check tomorrow
-    final tomorrow = today.add(const Duration(days: 1));
-    if (calendarData.containsKey(tomorrow)) {
-      final tomorrowSchedule = List<ScheduleItem>.from(calendarData[tomorrow]!.schedule);
-
-      if (tomorrowSchedule.isNotEmpty) {
+      if (todaySchedule.isEmpty) {
+        print("Today's schedule is empty.");
+      } else {
+        print(
+          "Today's schedule items (before sort): ${todaySchedule.map((e) => '${e.title} @ ${e.startTime}').toList()}",
+        );
         // Sort by start time
-        tomorrowSchedule.sort((a, b) {
+        todaySchedule.sort((a, b) {
           final aMinutes = a.startTime.hour * 60 + a.startTime.minute;
           final bMinutes = b.startTime.hour * 60 + b.startTime.minute;
           return aMinutes.compareTo(bMinutes);
         });
+        print(
+          "Today's schedule items (after sort): ${todaySchedule.map((e) => '${e.title} @ ${e.startTime}').toList()}",
+        );
 
-        return tomorrowSchedule.first; // First class tomorrow
+        // Find the next class today
+        for (final item in todaySchedule) {
+          final itemStartMinutes = item.startTime.hour * 60 + item.startTime.minute;
+          final currentMinutes = currentTime.hour * 60 + currentTime.minute;
+
+          print(
+            "  Comparing Today: ${item.title} (${item.startTime}) -> ${itemStartMinutes} min > ${currentMinutes} min (current)?",
+          );
+
+          if (itemStartMinutes > currentMinutes) {
+            print("    -> YES. Next class today: ${item.title} at ${item.startTime}");
+            return item; // This is the next class today
+          } else {
+            print("    -> NO. Class has passed or is ongoing.");
+          }
+        }
+        print("No suitable next class found for today after checking all items.");
       }
+    } else {
+      print("No schedule data found for today.");
     }
 
-    // If no classes found for today or tomorrow, return null
-    return null;
+    // If no class found today, check tomorrow
+    return ScheduleItem(
+      title: "No Class",
+      startTime: TimeOfDay(hour: 0, minute: 0),
+      endTime: TimeOfDay(hour: 0, minute: 0),
+    );
   }
 
   void _showTodayScheduleDialog() {
@@ -333,7 +351,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     children: [
                                       IconButton(onPressed: () {}, icon: Icon(Icons.flatware, color: Colors.white)),
                                       IconButton(
-                                        onPressed: () {},
+                                        onPressed: () {
+                                          // Open settings page
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(builder: (context) => SettingsPage()),
+                                          );
+                                        },
                                         icon: Icon(Icons.settings_outlined, color: Colors.white),
                                       ),
                                     ],
@@ -342,7 +366,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   InkWell(
                                     onTap: _showTodayScheduleDialog,
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                      padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 32),
                                       child: Flex(
                                         direction: Axis.horizontal,
                                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -373,30 +397,27 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                               ],
                                             ),
                                           ),
-                                          Column(
-                                            children: [
-                                              Text(
-                                                _nextScheduleItem != null
-                                                    ? _nextScheduleItem!
-                                                        .formatTime(_nextScheduleItem!.startTime)
-                                                        .split(" ")[0]
-                                                    : "",
-                                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-                                              ),
-                                              Text(
-                                                _nextScheduleItem != null ? "|" : "",
-                                                style: TextStyle(color: Colors.white),
-                                              ),
-                                              Text(
-                                                _nextScheduleItem != null
-                                                    ? _nextScheduleItem!
-                                                        .formatTime(_nextScheduleItem!.endTime)
-                                                        .split(" ")[0]
-                                                    : "",
-                                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-                                              ),
-                                            ],
-                                          ),
+                                          if (_nextScheduleItem != null && _nextScheduleItem!.title != "No Class")
+                                            Column(
+                                              children: [
+                                                Text(
+                                                  _nextScheduleItem!
+                                                      .formatTime(_nextScheduleItem!.startTime)
+                                                      .split(" ")[0],
+                                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                                                ),
+                                                Text(
+                                                  "|",
+                                                  style: TextStyle(color: Colors.white),
+                                                ),
+                                                Text(
+                                                  _nextScheduleItem!
+                                                      .formatTime(_nextScheduleItem!.endTime)
+                                                      .split(" ")[0],
+                                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                                                ),
+                                              ],
+                                            ),
                                         ],
                                       ),
                                     ),
