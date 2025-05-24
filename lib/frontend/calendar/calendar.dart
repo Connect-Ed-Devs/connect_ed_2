@@ -38,6 +38,8 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   Map<DateTime, CalendarItem>? _calendarData;
   Future<Map<DateTime, CalendarItem>>? _calendarDataFuture;
   bool _isLoading = true;
+  String? _errorMessage; // Add error message state
+  bool _hasDataLoadError = false; // Track if there's a data loading error
 
   // Time range for the schedule display
   late TimeOfDay _scheduleStartTime;
@@ -49,6 +51,10 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
 
     // Initialize page controller with initial date
     _dayPageController = PageController(initialPage: 500); // Start at middle to allow for past/future swiping
+
+    // Initialize schedule time range with default values to prevent LateInitializationError
+    _scheduleStartTime = const TimeOfDay(hour: 8, minute: 0);
+    _scheduleEndTime = const TimeOfDay(hour: 17, minute: 0);
 
     _loadCalendarData();
   }
@@ -66,66 +72,68 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   }
 
   void _loadCalendarData() {
-    // Check cache status and load data accordingly
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _hasDataLoadError = false;
+    });
+
+    // Get data from calendar manager with proper error handling
     final cacheStatus = calendarManager.getCacheStatus();
-    switch (cacheStatus) {
-      case CacheStatus.fresh:
-        // Use cached data directly
-        setState(() {
-          _calendarData = calendarManager.getCachedData();
-          _isLoading = false;
-          _updateScheduleTimeRange();
-        });
-        break;
 
-      case CacheStatus.stale:
-        // Show cached data immediately, but also fetch fresh data
-        setState(() {
-          _calendarData = calendarManager.getCachedData();
-          _isLoading = false;
-          _updateScheduleTimeRange();
+    if (cacheStatus != CacheStatus.expired) {
+      try {
+        _calendarData = calendarManager.getCachedData();
+        if (_calendarData != null) {
+          setState(() {
+            _isLoading = false;
+            _hasDataLoadError = false;
+            _updateScheduleTimeRange();
+          });
+          return;
+        }
+      } catch (cacheError) {
+        // Handle cached data access error
+        print('Error accessing cached data: $cacheError');
+        // Continue to fetch fresh data instead of failing completely
+      }
+    }
 
-          // Fetch updated data in background
-          _calendarDataFuture = calendarManager.fetchData() as Future<Map<DateTime, CalendarItem>>;
-          _calendarDataFuture!
-              .then((newData) {
-                setState(() {
-                  _calendarData = newData;
-                  _updateScheduleTimeRange();
-                });
-              })
-              .catchError((error) {
-                // If error occurs, we keep using cached data
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Could not update calendar data: ${error.toString()}')));
-              });
+    // Fetch fresh data if expired, no cached data, or cache access failed
+    calendarManager
+        .fetchData()
+        .then((data) {
+          setState(() {
+            _calendarData = data;
+            _isLoading = false;
+            _errorMessage = null;
+            _hasDataLoadError = false;
+            _updateScheduleTimeRange();
+          });
+        })
+        .catchError((error) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = _parseErrorMessage(error.toString());
+            _hasDataLoadError = true;
+            _updateScheduleTimeRange();
+          });
+          print('Error loading calendar data: $error');
         });
-        break;
+  }
 
-      case CacheStatus.expired:
-        // Use FutureBuilder to show loading state
-        setState(() {
-          _isLoading = true;
-          _calendarDataFuture = calendarManager.fetchData() as Future<Map<DateTime, CalendarItem>>;
-          _calendarDataFuture!
-              .then((data) {
-                setState(() {
-                  _calendarData = data;
-                  _isLoading = false;
-                  _updateScheduleTimeRange();
-                });
-              })
-              .catchError((error) {
-                setState(() {
-                  _isLoading = false;
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Failed to load calendar data: ${error.toString()}')));
-                });
-              });
-        });
-        break;
+  // Parse error message to make it more user-friendly
+  String _parseErrorMessage(String errorMessage) {
+    if (errorMessage.contains('network') || errorMessage.contains('Network')) {
+      return "Network connection error";
+    } else if (errorMessage.contains('timeout') || errorMessage.contains('Timeout')) {
+      return "Request timed out";
+    } else if (errorMessage.contains('calendar service') || errorMessage.contains('calendar')) {
+      return "Calendar service unavailable";
+    } else if (errorMessage.contains('Invalid') || errorMessage.contains('invalid')) {
+      return "Invalid calendar link";
+    } else {
+      return "Unable to load calendar data";
     }
   }
 
@@ -160,8 +168,10 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
 
     if (scheduleItems.isEmpty) {
       // Default time range for empty schedule
-      _scheduleStartTime = const TimeOfDay(hour: 8, minute: 0);
-      _scheduleEndTime = const TimeOfDay(hour: 17, minute: 0);
+      setState(() {
+        _scheduleStartTime = const TimeOfDay(hour: 8, minute: 0);
+        _scheduleEndTime = const TimeOfDay(hour: 17, minute: 0);
+      });
       return;
     }
 
@@ -183,9 +193,11 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
       }
     }
 
-    // Add padding (1 hour before and after)
-    _scheduleStartTime = TimeOfDay(hour: (earliest.hour).clamp(0, 23), minute: 0);
-    _scheduleEndTime = TimeOfDay(hour: (latest.hour + 1).clamp(0, 23), minute: 59);
+    // Add padding (1 hour before and after) and update state
+    setState(() {
+      _scheduleStartTime = TimeOfDay(hour: (earliest.hour).clamp(0, 23), minute: 0);
+      _scheduleEndTime = TimeOfDay(hour: (latest.hour + 1).clamp(0, 23), minute: 59);
+    });
   }
 
   @override
@@ -313,11 +325,46 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (scheduleItems.isEmpty) {
-      // Smaller, more compact "No schedule" message
+    if (_hasDataLoadError) {
       return Center(
         child: Container(
-          height: 100, // Fixed smaller height
+          height: 250, // Increased height to match container height
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+              SizedBox(height: 16),
+              Text(
+                "Failed to load schedule",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.error),
+              ),
+              SizedBox(height: 8),
+              Text(
+                _errorMessage ?? "Unknown error occurred",
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _loadCalendarData,
+                icon: Icon(Icons.refresh, size: 16),
+                label: Text("Retry"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (scheduleItems.isEmpty) {
+      return Center(
+        child: Container(
+          height: 150, // Increased from 100 to match container height
           alignment: Alignment.center,
           child: Text(
             "No schedule for this day",
@@ -425,24 +472,27 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     const double HOUR_HEIGHT = 57.0;
     final int totalScheduleHours = _scheduleEndTime.hour - _scheduleStartTime.hour + 1;
 
-    // Calculate appropriate height - smaller for empty schedule
+    // Calculate appropriate height - provide more space for error states
     final scheduleItems = _getScheduleForSelectedDate();
-    final double containerHeight =
-        scheduleItems.isEmpty
-            ? 100 // Smaller height for empty schedule
-            : totalScheduleHours * HOUR_HEIGHT + 40;
+    final double containerHeight;
+
+    if (_isLoading || _hasDataLoadError) {
+      containerHeight = 250; // Increased height for error/loading states
+    } else if (scheduleItems.isEmpty) {
+      containerHeight = 150; // Slightly increased for empty state
+    } else {
+      containerHeight = totalScheduleHours * HOUR_HEIGHT + 40; // Normal schedule height
+    }
 
     return SliverStickyHeader(
       header: Container(
-        padding: const EdgeInsets.only(top: 24, left: 16.0, bottom: 0.0), // Explicitly set bottom padding to 0.0
+        padding: const EdgeInsets.only(top: 24, left: 16.0, bottom: 0.0),
         color: Theme.of(context).colorScheme.surface,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Ensure column takes minimum vertical space
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text("Schedule", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
-
-            // Simple non-animated date display
             Padding(
               padding: const EdgeInsets.only(top: 4.0, bottom: 16.0),
               child: Text(
@@ -460,7 +510,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                height: containerHeight, // Dynamic height based on content
+                height: containerHeight, // Dynamic height based on content and state
                 width: double.infinity,
                 child: PageView.builder(
                   physics: const PageScrollPhysics(),
@@ -485,8 +535,8 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   Widget _buildAssessmentsSection() {
     final assessments = _getAssessmentsForSelectedDate();
 
-    // Return null if there are no assessments - this will cause the section not to be displayed
-    if (assessments.isEmpty && !_isLoading) {
+    // Return null if there are no assessments and no loading/error state
+    if (assessments.isEmpty && !_isLoading && !_hasDataLoadError) {
       return SliverToBoxAdapter(child: SizedBox.shrink());
     }
 
@@ -494,7 +544,15 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
       header: Container(
         padding: const EdgeInsets.only(left: 16.0),
         color: Theme.of(context).colorScheme.surface,
-        child: const Text("Assessments", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+        child: Row(
+          children: [
+            Text("Assessments", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+            if (_hasDataLoadError) ...[
+              SizedBox(width: 8),
+              Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 20),
+            ],
+          ],
+        ),
       ),
       sliver: SliverToBoxAdapter(
         child: Container(
@@ -507,6 +565,69 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
               if (_isLoading)
                 const Center(
                   child: Padding(padding: EdgeInsets.symmetric(vertical: 24.0), child: CircularProgressIndicator()),
+                )
+              else if (_hasDataLoadError)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24.0),
+                    child: Column(
+                      children: [
+                        Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+                        SizedBox(height: 16),
+                        Text(
+                          "Failed to load assessments",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          _errorMessage ?? "Unknown error occurred",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: _loadCalendarData,
+                          icon: Icon(Icons.refresh, size: 16),
+                          label: Text("Retry"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else if (assessments.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24.0),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.assignment_outlined,
+                          size: 48,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          "No assessments for this day",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 )
               else
                 ListView.separated(
@@ -553,31 +674,44 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final assessments = _getAssessmentsForSelectedDate();
-    final bool hasAssessments = assessments.isNotEmpty || _isLoading;
+    final bool hasAssessments = assessments.isNotEmpty || _isLoading || _hasDataLoadError;
 
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () async {
-          // Force refresh data
+          // Force refresh data and wait for completion
           setState(() {
             _isLoading = true;
-            _calendarDataFuture = calendarManager.fetchData() as Future<Map<DateTime, CalendarItem>>;
+            _errorMessage = null;
+            _hasDataLoadError = false;
           });
 
           try {
-            final newData = await _calendarDataFuture!;
+            final newData = await calendarManager.fetchData();
             setState(() {
               _calendarData = newData;
               _isLoading = false;
+              _errorMessage = null;
+              _hasDataLoadError = false;
               _updateScheduleTimeRange();
             });
-          } catch (e) {
+          } catch (error) {
             setState(() {
               _isLoading = false;
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('Failed to refresh data: ${e.toString()}')));
+              _errorMessage = _parseErrorMessage(error.toString());
+              _hasDataLoadError = true;
             });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to refresh: ${_parseErrorMessage(error.toString())}'),
+                backgroundColor: Theme.of(context).colorScheme.error,
+                action: SnackBarAction(
+                  label: 'Retry',
+                  textColor: Theme.of(context).colorScheme.onError,
+                  onPressed: _loadCalendarData,
+                ),
+              ),
+            );
           }
         },
         child: CustomScrollView(

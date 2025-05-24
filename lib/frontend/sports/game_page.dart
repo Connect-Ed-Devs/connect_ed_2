@@ -3,6 +3,7 @@ import 'package:connect_ed_2/frontend/setup/app_bar.dart';
 import 'package:connect_ed_2/frontend/sports/game_widgets.dart'; // Added for GameWidget
 import 'package:connect_ed_2/frontend/sports/standings.dart'; // Added for StandingsTable
 import 'package:connect_ed_2/classes/standings_item.dart'; // Added for StandingsItem
+import 'package:connect_ed_2/frontend/setup/segmented_button.dart'; // Import the new CustomSegmentedButton
 import 'package:flutter/material.dart';
 
 enum GameInfoSegment { standings, upcomingGames }
@@ -266,7 +267,8 @@ class _GamePageState extends State<GamePage> {
               child: Row(
                 children: [
                   Expanded(
-                    child: SegmentedButton<GameInfoSegment>(
+                    child: CustomSegmentedButton<GameInfoSegment>(
+                      // Use the new CustomSegmentedButton
                       segments: const <ButtonSegment<GameInfoSegment>>[
                         ButtonSegment<GameInfoSegment>(
                           value: GameInfoSegment.upcomingGames,
@@ -283,25 +285,13 @@ class _GamePageState extends State<GamePage> {
                           _selectedSegment = newSelection.first;
                         });
                       },
-                      style: SegmentedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.tertiary,
-                        selectedForegroundColor: Theme.of(context).colorScheme.onPrimary,
-                        selectedBackgroundColor: Theme.of(context).colorScheme.primary,
-                        textStyle: TextStyle(fontSize: 16, fontFamily: "Montserrat", fontWeight: FontWeight.w500),
-                        visualDensity: VisualDensity.standard,
-                        iconSize: 0, // Hides the checkmark icon
-                        side: BorderSide.none, // Removes the border
-                      ).copyWith(
-                        shape: MaterialStateProperty.all<OutlinedBorder>(
-                          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                        ),
-                      ),
+                      // The style is now part of CustomSegmentedButton's default,
+                      // but can be overridden here if needed via its 'style' parameter.
                     ),
                   ),
                 ],
               ),
             ),
-            // Placeholder for content based on selected segment
           ),
           if (_selectedSegment == GameInfoSegment.upcomingGames)
             SliverToBoxAdapter(

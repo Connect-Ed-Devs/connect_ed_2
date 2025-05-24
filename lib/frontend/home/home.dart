@@ -30,16 +30,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Map<DateTime, CalendarItem>? _calendarData;
   ScheduleItem? _nextScheduleItem;
   bool _isLoading = false;
+  String? _errorMessage; // Add error message state
+  bool _hasDataLoadError = false; // Track if there's a data loading error
 
   @override
   void initState() {
     super.initState();
 
     // Initialize the animation controller with a very slow rotation
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 15), // 2 minutes for very subtle movement
-    )..repeat(reverse: true); // Add reverse for smooth back-and-forth
+    _animationController = AnimationController(vsync: this, duration: const Duration(seconds: 15))
+      ..repeat(reverse: true);
 
     // Load calendar data when the widget initializes
     _loadCalendarData();
@@ -49,33 +49,71 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   void _loadCalendarData() {
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
+      _hasDataLoadError = false;
     });
 
-    // Get data from calendar manager
+    // Get data from calendar manager with proper error handling
     final cacheStatus = calendarManager.getCacheStatus();
 
     if (cacheStatus != CacheStatus.expired) {
-      _calendarData = calendarManager.getCachedData();
-      setState(() {
-        _nextScheduleItem = _getNextScheduleItem(_calendarData!);
-        _isLoading = false;
-      });
-    } else {
-      // Fetch fresh data if expired
-      calendarManager
-          .fetchData()
-          .then((data) {
-            setState(() {
-              _calendarData = data;
-              _nextScheduleItem = _getNextScheduleItem(data);
-              _isLoading = false;
-            });
-          })
-          .catchError((error) {
-            setState(() {
-              _isLoading = false;
-            });
+      try {
+        _calendarData = calendarManager.getCachedData();
+        if (_calendarData != null) {
+          setState(() {
+            _nextScheduleItem = _getNextScheduleItem(_calendarData!);
+            _isLoading = false;
+            _hasDataLoadError = false;
           });
+          return;
+        }
+      } catch (cacheError) {
+        // Handle cached data access error
+        print('Error accessing cached data: $cacheError');
+        // Continue to fetch fresh data instead of failing completely
+      }
+    }
+
+    // Fetch fresh data if expired, no cached data, or cache access failed
+    calendarManager
+        .fetchData()
+        .then((data) {
+          setState(() {
+            _calendarData = data;
+            _nextScheduleItem = _getNextScheduleItem(data);
+            _isLoading = false;
+            _errorMessage = null;
+            _hasDataLoadError = false;
+          });
+        })
+        .catchError((error) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = _parseErrorMessage(error.toString());
+            _hasDataLoadError = true;
+            // Set fallback data for UI
+            _nextScheduleItem = ScheduleItem(
+              title: "Schedule unavailable",
+              startTime: TimeOfDay(hour: 0, minute: 0),
+              endTime: TimeOfDay(hour: 0, minute: 0),
+            );
+          });
+          print('Error loading calendar data: $error');
+        });
+  }
+
+  // Parse error message to make it more user-friendly
+  String _parseErrorMessage(String errorMessage) {
+    if (errorMessage.contains('network') || errorMessage.contains('Network')) {
+      return "Network connection error";
+    } else if (errorMessage.contains('timeout') || errorMessage.contains('Timeout')) {
+      return "Request timed out";
+    } else if (errorMessage.contains('calendar service') || errorMessage.contains('calendar')) {
+      return "Calendar service unavailable";
+    } else if (errorMessage.contains('Invalid') || errorMessage.contains('invalid')) {
+      return "Invalid calendar link";
+    } else {
+      return "Unable to load calendar data";
     }
   }
 
@@ -210,6 +248,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           // Force refresh data and wait for completion
           setState(() {
             _isLoading = true;
+            _errorMessage = null;
+            _hasDataLoadError = false;
           });
 
           try {
@@ -218,14 +258,26 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               _calendarData = newData;
               _nextScheduleItem = _getNextScheduleItem(newData);
               _isLoading = false;
+              _errorMessage = null;
+              _hasDataLoadError = false;
             });
           } catch (error) {
             setState(() {
               _isLoading = false;
+              _errorMessage = _parseErrorMessage(error.toString());
+              _hasDataLoadError = true;
             });
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('Failed to refresh data: ${error.toString()}')));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to refresh: ${_parseErrorMessage(error.toString())}'),
+                backgroundColor: Theme.of(context).colorScheme.error,
+                action: SnackBarAction(
+                  label: 'Retry',
+                  textColor: Theme.of(context).colorScheme.onError,
+                  onPressed: _loadCalendarData,
+                ),
+              ),
+            );
           }
         },
         child: CustomScrollView(
@@ -234,16 +286,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               automaticallyImplyLeading: false,
               pinned: true,
               backgroundColor: Theme.of(context).colorScheme.surface,
-              title: const SizedBox.shrink(), // Clear default title
+              title: const SizedBox.shrink(),
               flexibleSpace: LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints constraints) {
                   // Calculate scroll progress
                   double progress = 1.0;
                   double height = constraints.maxHeight;
-                  final double collapsedHeight = MediaQuery.of(context).padding.top + 35; // Increased by 9 pts
+                  final double collapsedHeight = MediaQuery.of(context).padding.top + 35;
 
                   if (height > collapsedHeight) {
-                    final double maxHeight = 145.0; // Increased by 9 pts
+                    final double maxHeight = 145.0;
                     progress = (maxHeight - height) / (maxHeight - collapsedHeight);
                   }
 
@@ -352,7 +404,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       IconButton(onPressed: () {}, icon: Icon(Icons.flatware, color: Colors.white)),
                                       IconButton(
                                         onPressed: () {
-                                          // Open settings page
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(builder: (context) => SettingsPage()),
@@ -364,7 +415,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   ),
                                   Spacer(),
                                   InkWell(
-                                    onTap: _showTodayScheduleDialog,
+                                    onTap: !_hasDataLoadError ? _showTodayScheduleDialog : null,
                                     child: Padding(
                                       padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 32),
                                       child: Flex(
@@ -378,26 +429,61 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 SizedBox(height: 16),
-                                                Text(
-                                                  "Up Next",
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: Colors.white,
-                                                  ),
+                                                Row(
+                                                  children: [
+                                                    Text(
+                                                      _hasDataLoadError ? "Data Error" : "Up Next",
+                                                      style: TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                    if (_hasDataLoadError) ...[
+                                                      SizedBox(width: 8),
+                                                      Icon(Icons.error_outline, color: Colors.white, size: 16),
+                                                    ],
+                                                    if (_isLoading) ...[
+                                                      SizedBox(width: 8),
+                                                      SizedBox(
+                                                        width: 16,
+                                                        height: 16,
+                                                        child: CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
                                                 ),
                                                 Text(
-                                                  _nextScheduleItem?.title ?? "No upcoming classes",
+                                                  _hasDataLoadError
+                                                      ? (_errorMessage ?? "Failed to load schedule")
+                                                      : (_nextScheduleItem?.title ?? "No upcoming classes"),
                                                   style: TextStyle(
                                                     fontSize: 24,
                                                     fontWeight: FontWeight.w600,
                                                     color: Colors.white,
                                                   ),
                                                 ),
+                                                if (_hasDataLoadError)
+                                                  Padding(
+                                                    padding: const EdgeInsets.only(top: 4.0),
+                                                    child: Text(
+                                                      "Pull down to retry",
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.white.withOpacity(0.8),
+                                                      ),
+                                                    ),
+                                                  ),
                                               ],
                                             ),
                                           ),
-                                          if (_nextScheduleItem != null && _nextScheduleItem!.title != "No Class")
+                                          if (_nextScheduleItem != null &&
+                                              _nextScheduleItem!.title != "No Class" &&
+                                              _nextScheduleItem!.title != "Schedule unavailable" &&
+                                              !_hasDataLoadError)
                                             Column(
                                               children: [
                                                 Text(
@@ -406,10 +492,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                       .split(" ")[0],
                                                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                                                 ),
-                                                Text(
-                                                  "|",
-                                                  style: TextStyle(color: Colors.white),
-                                                ),
+                                                Text("|", style: TextStyle(color: Colors.white)),
                                                 Text(
                                                   _nextScheduleItem!
                                                       .formatTime(_nextScheduleItem!.endTime)
@@ -438,9 +521,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           opacity: collapsedTitleOpacity,
                           duration: const Duration(milliseconds: 100),
                           child: Center(
-                            child: Text(
-                              "Up Next: ${_nextScheduleItem?.title ?? 'No upcoming classes'}",
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (_hasDataLoadError) ...[
+                                  Icon(Icons.error_outline, color: Colors.white, size: 16),
+                                  SizedBox(width: 8),
+                                ],
+                                Flexible(
+                                  child: Text(
+                                    _hasDataLoadError
+                                        ? (_errorMessage ?? "Schedule unavailable")
+                                        : "Up Next: ${_nextScheduleItem?.title ?? 'No upcoming classes'}",
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -449,8 +546,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   );
                 },
               ),
-              expandedHeight: 155.0, // Increased by 9 pts
-              toolbarHeight: 35, // Increased by 9 pts
+              expandedHeight: 155.0,
+              toolbarHeight: 35,
             ),
 
             SliverToBoxAdapter(
@@ -572,7 +669,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [Text("Upcoming Assessments", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500))],
+                  children: [
+                    Row(
+                      children: [
+                        Text("Upcoming Assessments", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+                        if (_hasDataLoadError) ...[
+                          SizedBox(width: 8),
+                          Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 20),
+                        ],
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -586,19 +693,90 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         ? Center(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 24.0),
-                            child: CircularProgressIndicator(),
+                            child: Column(
+                              children: [
+                                CircularProgressIndicator(),
+                                SizedBox(height: 16),
+                                Text(
+                                  "Loading assessments...",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                        : _hasDataLoadError
+                        ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24.0),
+                            child: Column(
+                              children: [
+                                Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+                                SizedBox(height: 16),
+                                Text(
+                                  "Failed to load assessments",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  _errorMessage ?? "Unknown error occurred",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: _loadCalendarData,
+                                  icon: Icon(Icons.refresh, size: 16),
+                                  label: Text("Retry"),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Theme.of(context).colorScheme.primary,
+                                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         )
                         : upcomingAssessments.isEmpty
                         ? Center(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 24.0),
-                            child: Text(
-                              "No upcoming assessments this week",
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
-                              ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.assignment_outlined,
+                                  size: 48,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  "No upcoming assessments",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  "Check back later or refresh to see new assessments",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ),
                           ),
                         )
@@ -616,9 +794,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Date indicator
-
-                                  // Assessment details
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,

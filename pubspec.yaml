@@ -47,6 +47,7 @@ dependencies:
     icalendar_parser: ^2.1.0
     carousel_slider: ^5.0.0
     url_launcher: ^6.3.1
+    webview_flutter: ^4.13.0
 
 dev_dependencies:
     flutter_test:
@@ -72,6 +73,11 @@ flutter:
     # To add assets to your application, add an assets section, like this:
     assets:
         - assets/wooly_test.png
+        - assets/ConnectEd Transparent.png
+        - assets/step1.png
+        - assets/step2.png
+        - assets/step3.png
+        - assets/step4.png
     #   - images/a_dot_ham.jpeg
 
     # An image asset can refer to one or more resolution-specific "variants", see

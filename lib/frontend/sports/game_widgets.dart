@@ -50,7 +50,7 @@ class GameWidget extends StatelessWidget {
             Text(
               '${game.date.month}.${game.date.day}.${game.date.year}',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w400,
                 color: Theme.of(context).colorScheme.onSurface.withAlpha(190),
               ),

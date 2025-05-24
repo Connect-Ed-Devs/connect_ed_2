@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 
 class OTWScreen extends StatelessWidget {
-  const OTWScreen({super.key});
+  final String bannerTag;
+  final String athleteNameTag;
+  final String athleteTitleTag;
+
+  const OTWScreen({super.key, required this.bannerTag, required this.athleteNameTag, required this.athleteTitleTag});
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +65,7 @@ class OTWScreen extends StatelessWidget {
                     Opacity(
                       opacity: expandedTitleOpacity,
                       child: Hero(
-                        tag: "banner",
+                        tag: bannerTag,
                         child: Stack(
                           children: [
                             // Image container
@@ -111,7 +115,7 @@ class OTWScreen extends StatelessWidget {
                                 ),
                               SizedBox(height: 16),
                               Hero(
-                                tag: "athlete-name",
+                                tag: athleteNameTag,
                                 child: Material(
                                   color: Colors.transparent,
                                   child: Text(
@@ -122,7 +126,7 @@ class OTWScreen extends StatelessWidget {
                               ),
                               SizedBox(height: 8),
                               Hero(
-                                tag: "athlete-title",
+                                tag: athleteTitleTag,
                                 child: Material(
                                   color: Colors.transparent,
                                   child: Text(

@@ -2,6 +2,7 @@ import 'package:connect_ed_2/frontend/calendar/calendar.dart';
 import 'package:connect_ed_2/frontend/setup/opacity_button.dart';
 import 'package:flutter/material.dart';
 import 'package:connect_ed_2/frontend/calendar/calendar_widget.dart';
+import 'dart:math'; // For max function
 
 class CECalendarAppBar extends StatelessWidget {
   final String title;
@@ -191,6 +192,112 @@ class CECalendarAppBar extends StatelessWidget {
       selectedDate: selectedDate,
       onDateSelected: onDateSelected,
       child: const CalendarWidget(isInAppBar: true, forceWeekView: true),
+    );
+  }
+}
+
+class _CalendarWidget extends StatelessWidget {
+  final DateTime currentMonth;
+  final DateTime selectedDate;
+  final Function(DateTime) onDateSelected;
+  final ScrollController scrollController;
+
+  const _CalendarWidget({
+    required this.currentMonth,
+    required this.selectedDate,
+    required this.onDateSelected,
+    required this.scrollController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final daysInMonth = DateTime(currentMonth.year, currentMonth.month + 1, 0).day;
+    final firstDayOfMonth = DateTime(currentMonth.year, currentMonth.month, 1);
+    final weekdayOfFirstDay = firstDayOfMonth.weekday; // Monday is 1, Sunday is 7
+
+    // Calculate the offset for the first day to align with the weekday
+    // Grid starts from 0, so if Monday is 1, offset is 0. If Sunday is 7, offset is 6.
+    final dayOffset = (weekdayOfFirstDay == 7) ? 0 : weekdayOfFirstDay;
+
+    final DateTime now = DateTime.now();
+    final DateTime todayDate = DateTime(now.year, now.month, now.day);
+
+    return GridView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      physics: const NeverScrollableScrollPhysics(), // Calendar itself shouldn't scroll
+      shrinkWrap: true,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 7,
+        childAspectRatio: 1.2, // Adjust for better cell appearance
+      ),
+      itemCount: daysInMonth + dayOffset,
+      itemBuilder: (context, index) {
+        if (index < dayOffset) {
+          return Container(); // Empty container for offset days
+        }
+
+        final day = index - dayOffset + 1;
+        final dayDate = DateTime(currentMonth.year, currentMonth.month, day);
+        final bool isSelected =
+            selectedDate.year == dayDate.year && selectedDate.month == dayDate.month && selectedDate.day == dayDate.day;
+
+        final bool isToday =
+            dayDate.year == todayDate.year && dayDate.month == todayDate.month && dayDate.day == todayDate.day;
+
+        // Help me debug the condition above by printing each value out
+        print('Day: $day, Year: ${dayDate.year}, Month: ${dayDate.month}, Day: ${dayDate.day}');
+        print('Today: ${todayDate.year}, Month: ${todayDate.month}, Day: ${todayDate.day}');
+
+        BoxDecoration? cellDecoration;
+        Color textColor;
+        FontWeight fontWeight = FontWeight.normal;
+        Border? borderStyle; // To store the border style
+
+        // Determine border style if it's today
+        if (isToday) {
+          borderStyle = Border.all(
+            color:
+                isSelected
+                    ? theme.colorScheme.outline
+                    : theme.colorScheme.primary, // Use outline color if selected and today
+            width: 1.5,
+          );
+        }
+
+        if (isSelected) {
+          cellDecoration = BoxDecoration(
+            color: theme.colorScheme.secondary, // Fill color for selected
+            shape: BoxShape.circle,
+            border: borderStyle, // Apply determined border (null if not today)
+          );
+          textColor = theme.colorScheme.onPrimary;
+          fontWeight = FontWeight.bold;
+        } else if (isToday) {
+          // Today but not selected
+          cellDecoration = BoxDecoration(
+            shape: BoxShape.circle,
+            border: borderStyle, // Apply border for today (will be primary color)
+          );
+          textColor = theme.colorScheme.primary; // Text color for today (not selected)
+          fontWeight = FontWeight.bold;
+        } else {
+          // Neither selected nor today
+          cellDecoration = null; // No specific decoration
+          textColor = theme.colorScheme.onSurface;
+        }
+
+        return InkWell(
+          onTap: () => onDateSelected(dayDate),
+          customBorder: const CircleBorder(),
+          child: Container(
+            alignment: Alignment.center,
+            margin: const EdgeInsets.all(4.0), // Add some margin for the circle to look nice
+            decoration: cellDecoration,
+            child: Text('$day', style: TextStyle(color: textColor, fontWeight: fontWeight)),
+          ),
+        );
+      },
     );
   }
 }
