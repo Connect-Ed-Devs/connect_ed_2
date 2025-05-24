@@ -110,7 +110,12 @@ class CalendarManager extends CacheManager {
 
   @override
   Future<Map<DateTime, CalendarItem>> fetchData() async {
-    String calendarLink = prefs.getString('calendar_link') ?? '';
+    // Simulate a fetch error for testing
+    // throw Exception('Simulated network error: Unable to connect to calendar service');
+
+    // Original code commented out for testing
+
+    String calendarLink = prefs.getString('link') ?? '';
 
     final response = await http.get(Uri.parse(calendarLink));
     if (response.statusCode != 200) throw Exception('Failed to load calendar data');

@@ -14,41 +14,32 @@ class TeamWidget extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => TeamPage(/* team: team */)));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => TeamPage(team: team)));
       },
       child: Container(
         width: 160,
         padding: const EdgeInsets.all(16),
-        clipBehavior: Clip.antiAlias,
         decoration: ShapeDecoration(
           color: Theme.of(context).colorScheme.tertiary,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.start,
+          // Removed mainAxisSize: MainAxisSize.min to allow Column to fill available height
+          // Removed non-standard 'spacing: 16' property
+          mainAxisAlignment: MainAxisAlignment.start, // Can be .spaceBetween if Spacer is the only flexible part
           crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 16,
           children: [
             Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: MainAxisSize.min, // Inner column for text can remain min
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 4,
+              spacing: 4, // This is a valid property if this is a custom Column, or use SizedBox if standard
               children: [
-                Text(
-                  team.name,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontFamily: 'Montserrat',
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                Text(team.name, style: TextStyle(fontSize: 16, fontFamily: 'Montserrat', fontWeight: FontWeight.w500)),
                 Text(
                   displayRecord, // Use the combined displayRecord string
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.6), // Adjusted alpha for consistency
+                    color: Theme.of(context).colorScheme.onSurface.withAlpha(127), // Adjusted alpha for consistency
                     fontSize: 12,
                     fontFamily: 'Montserrat',
                     fontWeight: FontWeight.w500,
@@ -56,8 +47,10 @@ class TeamWidget extends StatelessWidget {
                 ),
               ],
             ),
-            Spacer(),
-            Icon(team.sportIcon, size: 36, color: Colors.white),
+            // Add a SizedBox for explicit spacing if needed before the Spacer
+            // SizedBox(height: 16),
+            Spacer(), // This will now push the Icon to the bottom
+            Icon(team.sportIcon, size: 36),
           ],
         ),
       ),

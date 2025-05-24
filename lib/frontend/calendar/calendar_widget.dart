@@ -114,9 +114,38 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
     // Determine if we show full calendar or just the week
     bool showFullCalendar = !widget.forceWeekView && !widget.isInAppBar;
 
+    final DateTime now = DateTime.now();
+    final DateTime todayDate = DateTime(now.year, now.month, now.day);
+
     // Date container builder function
     Widget buildDateContainer(DateTime date, bool isSelected, bool isCurrentMonth) {
       final controller = _getController(date);
+      final theme = Theme.of(context); // Get theme here
+
+      final bool isToday = date.year == todayDate.year && date.month == todayDate.month && date.day == todayDate.day;
+
+      BoxDecoration? cellDecoration;
+      Color textColor;
+      FontWeight fontWeight = FontWeight.normal;
+      Border? borderStyle;
+
+      // Determine border style if it's today
+      if (isToday) {
+        borderStyle = Border.all(color: isSelected ? theme.colorScheme.outline : theme.colorScheme.primary, width: 1.5);
+      }
+
+      if (isSelected) {
+        cellDecoration = BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle, border: borderStyle);
+        textColor = theme.colorScheme.onPrimary;
+        fontWeight = FontWeight.w500;
+      } else if (isToday) {
+        cellDecoration = null;
+        textColor = theme.colorScheme.primary;
+        fontWeight = FontWeight.w500;
+      } else {
+        cellDecoration = null;
+        textColor = isCurrentMonth ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withAlpha(127);
+      }
 
       return FadeTransition(
         opacity: Tween<double>(
@@ -130,22 +159,14 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
           },
           child: Container(
             height: widget.isInAppBar ? 24 : 32, // Smaller in app bar
-            decoration: BoxDecoration(
-              color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
-              shape: BoxShape.circle,
-            ),
+            decoration: cellDecoration, // Apply the determined decoration
             alignment: Alignment.center,
             child: Text(
               date.day.toString(),
               style: TextStyle(
                 fontSize: 14, // Smaller text in app bar
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color:
-                    isSelected
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : isCurrentMonth
-                        ? Theme.of(context).colorScheme.onSurface
-                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                fontWeight: fontWeight, // Apply determined font weight
+                color: textColor, // Apply determined text color
               ),
             ),
           ),

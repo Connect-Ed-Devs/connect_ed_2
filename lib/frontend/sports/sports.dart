@@ -6,8 +6,9 @@ import 'package:connect_ed_2/frontend/setup/opacity_button.dart';
 import 'package:connect_ed_2/frontend/sports/game_widgets.dart';
 import 'package:connect_ed_2/frontend/sports/otw.dart';
 import 'package:connect_ed_2/frontend/sports/standings.dart';
-import 'package:connect_ed_2/frontend/sports/team_widget.dart'; // Import TeamWidget
-import 'package:connect_ed_2/classes/team.dart'; // Import Team class
+import 'package:connect_ed_2/frontend/sports/team_widget.dart';
+import 'package:connect_ed_2/classes/team.dart';
+import 'package:connect_ed_2/frontend/sports/game_search.dart'; // Import GameSearchPage
 import 'package:flutter/material.dart';
 
 class SportsPage extends StatefulWidget {
@@ -29,6 +30,10 @@ class _SportsPageState extends State<SportsPage> {
     Team(name: "Varsity Baseball", rank: 4, record: "4-3-0", sportIcon: Icons.sports_baseball),
   ];
 
+  // Assume you have a list of OTW items, or you generate them
+  // For demonstration, let's say you have 3 OTW items
+  final int otwItemCount = 3;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -38,13 +43,18 @@ class _SportsPageState extends State<SportsPage> {
           SliverToBoxAdapter(
             child: Column(
               children: [
-                CarouselSlider(
-                  items: [OTWWidget(), OTWWidget(), OTWWidget()],
+                CarouselSlider.builder(
+                  itemCount: otwItemCount, // Use the count of your OTW items
+                  itemBuilder: (BuildContext context, int itemIndex, int pageViewIndex) {
+                    // Pass a unique identifier to OTWWidget, e.g., itemIndex
+                    // If your OTW data has unique IDs, use those instead.
+                    return OTWWidget(uniqueId: itemIndex.toString());
+                  },
                   options: CarouselOptions(
                     viewportFraction: 1.0,
-                    enableInfiniteScroll: false,
+                    enableInfiniteScroll: false, // Keep false if items are limited and static
                     height: 256,
-                    autoPlay: true,
+                    autoPlay: true, // autoPlay can contribute if not handled carefully
                     onPageChanged: (index, reason) {
                       setState(() {
                         _currentIndex = index;
@@ -55,7 +65,8 @@ class _SportsPageState extends State<SportsPage> {
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(3, (index) {
+                  children: List.generate(otwItemCount, (index) {
+                    // Use otwItemCount
                     return Container(
                       width: 8,
                       height: 8,
@@ -81,7 +92,15 @@ class _SportsPageState extends State<SportsPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text("Recent", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
-                  OpacityTextButton(text: "View More", onPressed: () {}),
+                  OpacityTextButton(
+                    text: "View More",
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const GameSearchPage(initialFilter: 'played')),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -193,8 +212,16 @@ class _SportsPageState extends State<SportsPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Recent", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
-                  OpacityTextButton(text: "View More", onPressed: () {}),
+                  Text("Upcoming", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+                  OpacityTextButton(
+                    text: "View More",
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const GameSearchPage(initialFilter: 'upcoming')),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -329,22 +356,50 @@ class _SportsPageState extends State<SportsPage> {
 }
 
 class OTWWidget extends StatelessWidget {
-  const OTWWidget({super.key});
+  final String uniqueId; // To make Hero tags unique
+
+  // Example: You might also pass data for the athlete
+  // final String athleteName;
+  // final String imageUrl;
+
+  const OTWWidget({
+    super.key,
+    required this.uniqueId,
+    // this.athleteName = "Dylan Woolstencroft", // Default or passed data
+    // this.imageUrl = "assets/wooly_test.png", // Default or passed data
+  });
 
   @override
   Widget build(BuildContext context) {
+    // Construct unique tags
+    final String bannerTag = "banner-$uniqueId";
+    final String athleteNameTag = "athlete-name-$uniqueId";
+    final String athleteTitleTag = "athlete-title-$uniqueId";
+
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).push(MaterialPageRoute(builder: (context) => const OTWScreen()));
+        // When navigating, OTWScreen must also use these unique tags
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder:
+                (context) => OTWScreen(
+                  // Pass the unique tags to the destination screen
+                  bannerTag: bannerTag,
+                  athleteNameTag: athleteNameTag,
+                  athleteTitleTag: athleteTitleTag,
+                  // athleteName: athleteName, // Pass other data as needed
+                  // imageUrl: imageUrl,
+                ),
+          ),
+        );
       },
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 16),
         height: 256,
         child: Stack(
           children: [
-            // Include both image and gradient in the Hero
             Hero(
-              tag: "banner",
+              tag: bannerTag, // Use unique tag
               child: Stack(
                 children: [
                   // Background container with image
@@ -380,17 +435,17 @@ class OTWWidget extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Hero(
-                        tag: "athlete-name",
+                        tag: athleteNameTag, // Use unique tag
                         child: Material(
                           color: Colors.transparent,
                           child: Text(
-                            "Dylan Woolstencroft",
+                            "Dylan Woolstencroft", // Replace with dynamic data if available
                             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: Colors.white),
                           ),
                         ),
                       ),
                       Hero(
-                        tag: "athlete-title",
+                        tag: athleteTitleTag, // Use unique tag
                         child: Material(
                           color: Colors.transparent,
                           child: Text(
