@@ -1,3 +1,4 @@
+import 'package:connect_ed_2/classes/standings_list.dart';
 import 'package:connect_ed_2/classes/team.dart';
 import 'package:connect_ed_2/frontend/setup/app_bar.dart';
 import 'package:connect_ed_2/frontend/setup/segmented_button.dart';
@@ -5,6 +6,8 @@ import 'package:connect_ed_2/classes/game.dart'; // Added for Game
 import 'package:connect_ed_2/frontend/sports/game_widgets.dart'; // Added for GameWidget
 import 'package:connect_ed_2/classes/standings_item.dart'; // Added for StandingsItem
 import 'package:connect_ed_2/frontend/sports/standings.dart'; // Added for StandingsTable
+import 'package:connect_ed_2/requests/games_cache_manager.dart'; // Import for games
+import 'package:connect_ed_2/requests/standings_cache_manager.dart'; // Import for standings
 import 'package:flutter/material.dart';
 
 // Define an enum for the segments
@@ -39,8 +42,13 @@ class _SegmentedButtonHeaderDelegate extends SliverPersistentHeaderDelegate {
 
 class TeamPage extends StatefulWidget {
   final Team team;
+  final String? leagueCode; // Add league code parameter
 
-  const TeamPage({super.key, required this.team});
+  const TeamPage({
+    super.key,
+    required this.team,
+    this.leagueCode, // Make it optional to maintain compatibility
+  });
 
   @override
   State<TeamPage> createState() => _TeamPageState();
@@ -49,80 +57,397 @@ class TeamPage extends StatefulWidget {
 class _TeamPageState extends State<TeamPage> {
   TeamInfoSegment _selectedSegment = TeamInfoSegment.upcoming;
 
-  // Dummy data for games (can be reused or varied for upcoming/scores)
-  final List<Game> _mockGames = List.generate(
-    8,
-    (index) => Game(
-      homeTeam: "Team ${String.fromCharCode(65 + index)}",
-      homeabbr: "T${String.fromCharCode(65 + index)}",
-      homeLogo: "assets/team_a_logo.png",
-      awayTeam: "Team ${String.fromCharCode(73 + index)}", // I to P
-      awayabbr: "T${String.fromCharCode(73 + index)}",
-      awayLogo: "assets/team_b_logo.png",
-      date: DateTime.now().add(Duration(days: index + (index % 2 == 0 ? 2 : -2))), // Mix of past and future
-      time: "${5 + index}:00 PM",
-      homeScore: (index % 2 == 0) ? "${20 + index}" : "-", // Scores for some
-      awayScore: (index % 2 == 0) ? "${18 + index}" : "-",
-      sportsID: 1, // Example sport ID
-      sportsName: "Soccer", // Example sport name
-      term: "Spring 2024",
-      leagueCode: "League X",
-    ),
-  );
+  // Data states
+  bool _isLoadingGames = true;
+  bool _isLoadingStandings = true;
+  bool _hasGamesError = false;
+  bool _hasStandingsError = false;
+  List<Game> _upcomingGames = [];
+  List<Game> _playedGames = [];
+  List<StandingsItem> _standingsData = [];
 
-  // Dummy data for standings
-  final List<StandingsItem> _mockStandings = List.generate(
-    8,
-    (index) => StandingsItem(
-      rank: index + 1,
-      teamName: "Team ${String.fromCharCode(65 + index)}",
-      teamAbbreviation: "T${String.fromCharCode(65 + index)}",
-      wins: 15 - index * 2,
-      losses: index + 1,
-      ties: index % 3,
-      matchesPlayed: (15 - index * 2) + (index + 1) + (index % 3),
-      points: (15 - index * 2) * 3 + (index % 3),
-    ),
-  );
+  // Add a variable to store the league code
+  String? _leagueCode;
+
+  @override
+  void initState() {
+    super.initState();
+    _leagueCode = widget.leagueCode; // Store league code
+    _loadGamesData();
+    _loadStandingsData();
+  }
+
+  // Load games data
+  Future<void> _loadGamesData() async {
+    setState(() {
+      _isLoadingGames = true;
+      _hasGamesError = false;
+    });
+
+    try {
+      // Get cached data first
+      Map<String, Game>? cachedGames;
+      try {
+        cachedGames = gamesManager.getCachedData();
+      } catch (e) {
+        print('Error accessing cached games: $e');
+      }
+
+      // If no cached data, fetch fresh
+      if (cachedGames == null) {
+        cachedGames = await gamesManager.fetchData();
+      }
+
+      // Process games data - filter for the specific league if provided, otherwise filter by team name
+      if (cachedGames != null) {
+        final now = DateTime.now();
+        List<Game> allTeamGames = [];
+
+        if (_leagueCode != null) {
+          // If league code is provided, filter by league code
+          allTeamGames = cachedGames.values.where((game) => game.leagueCode == _leagueCode).toList();
+        } else {
+          // If no league code, filter by team name
+          allTeamGames =
+              cachedGames.values
+                  .where((game) => game.homeTeam == widget.team.name || game.awayTeam == widget.team.name)
+                  .toList();
+        }
+
+        // Sort all games by date
+        allTeamGames.sort((a, b) => a.date.compareTo(b.date));
+
+        // Split into upcoming and played games
+        List<Game> upcoming =
+            allTeamGames.where((game) {
+              return game.date.isAfter(now) || (game.homeScore == '-' && game.awayScore == '-');
+            }).toList();
+
+        List<Game> played =
+            allTeamGames.where((game) {
+              return game.date.isBefore(now) && game.homeScore != '-' && game.awayScore != '-';
+            }).toList();
+
+        // Sort played games by date descending (most recent first)
+        played.sort((a, b) => b.date.compareTo(a.date));
+
+        setState(() {
+          _upcomingGames = upcoming;
+          _playedGames = played;
+          _isLoadingGames = false;
+        });
+      }
+    } catch (error) {
+      setState(() {
+        _isLoadingGames = false;
+        _hasGamesError = true;
+      });
+      print('Error loading games: $error');
+    }
+  }
+
+  // Load standings data
+  // Future<void> _loadStandingsData() async {
+  //   setState(() {
+  //     _isLoadingStandings = true;
+  //     _hasStandingsError = false;
+  //   });
+
+  //   try {
+  //     // Get cached data first
+  //     Map<String, StandingsList>? cachedStandings;
+  //     try {
+  //       cachedStandings = standingsManager.getCachedData();
+  //     } catch (e) {
+  //       print('Error accessing cached standings: $e');
+  //     }
+
+  //     // If no cached data, fetch fresh
+  //     if (cachedStandings == null) {
+  //       cachedStandings = await standingsManager.fetchData();
+  //     }
+
+  //     // Process standings data
+  //     if (cachedStandings != null) {
+  //       if (_leagueCode != null && cachedStandings.containsKey(_leagueCode)) {
+  //         // If we have a league code and it exists in the standings data
+  //         final standingsList = cachedStandings[_leagueCode!];
+  //         if (standingsList != null) {
+  //           setState(() {
+  //             _standingsData = standingsList.standings;
+  //             _isLoadingStandings = false;
+  //           });
+  //         } else {
+  //           setState(() {
+  //             _standingsData = [];
+  //             _isLoadingStandings = false;
+  //           });
+  //         }
+  //       } else {
+  //         // If no league code or league code not found, search through all standings
+  //         StandingsList? teamStandings;
+
+  //         // Loop through all standings lists to find one with our team
+  //         for (var standings in cachedStandings.values) {
+  //           if (standings.standings.any((item) => item.teamName == widget.team.name)) {
+  //             teamStandings = standings;
+  //             // Store the league code for future reference if not already set
+  //             if (_leagueCode == null) {
+  //               _leagueCode =
+  //                   cachedStandings.entries
+  //                       .firstWhere(
+  //                         (entry) => entry.value == teamStandings,
+  //                         orElse: () => MapEntry('unknown', teamStandings!),
+  //                       )
+  //                       .key;
+  //             }
+  //             break;
+  //           }
+  //         }
+
+  //         if (teamStandings != null) {
+  //           setState(() {
+  //             _standingsData = teamStandings!.standings;
+  //             _isLoadingStandings = false;
+  //           });
+  //         } else {
+  //           setState(() {
+  //             _standingsData = [];
+  //             _isLoadingStandings = false;
+  //           });
+  //         }
+  //       }
+  //     }
+  //   } catch (error) {
+  //     setState(() {
+  //       _isLoadingStandings = false;
+  //       _hasStandingsError = true;
+  //     });
+  //     print('Error loading standings: $error');
+  //   }
+  // }
+
+  Future<void> _loadStandingsData() async {
+    print('===== STANDINGS DEBUG =====');
+    print('Starting _loadStandingsData()');
+    print('Game leagueCode: ${widget.team.leagueCode}');
+
+    setState(() {
+      _isLoadingStandings = true;
+      _hasStandingsError = false;
+    });
+
+    try {
+      // Get cached data first
+      Map<String, StandingsList>? cachedStandings;
+      try {
+        print('Attempting to get cached standings data');
+        cachedStandings = standingsManager.getCachedData();
+        if (cachedStandings != null) {
+          print('Got cached standings: ${cachedStandings.length} league(s)');
+          print('Available leagues: ${cachedStandings.keys.join(', ')}');
+        } else {
+          print('No cached standings data available');
+        }
+      } catch (e) {
+        print('Error accessing cached standings: $e');
+      }
+
+      // If no cached data, fetch fresh
+      if (cachedStandings == null) {
+        print('Fetching fresh standings data from network');
+        cachedStandings = await standingsManager.fetchData();
+        print('Fresh standings data fetched: ${cachedStandings?.length} league(s)');
+        print('Available leagues: ${cachedStandings?.keys.join(', ')}');
+      }
+
+      // Find standings for this league
+      final leagueCode = widget.team.leagueCode;
+      print('Looking for standings with league code: $leagueCode');
+
+      if (cachedStandings != null && cachedStandings.containsKey(leagueCode)) {
+        print('League code $leagueCode found in standings data');
+
+        final standingsList = cachedStandings[leagueCode];
+        if (standingsList != null) {
+          print('StandingsList for $leagueCode contains ${standingsList.standings.length} team(s)');
+
+          setState(() {
+            _standingsData = standingsList.standings;
+            _isLoadingStandings = false;
+          });
+          print('Standings data loaded successfully');
+        } else {
+          print('ERROR: StandingsList for $leagueCode is null (unexpected)');
+          setState(() {
+            _isLoadingStandings = false;
+            _hasStandingsError = true;
+          });
+        }
+      } else {
+        print('ERROR: League code $leagueCode not found in standings data');
+        print('Available leagues: ${cachedStandings?.keys.join(', ') ?? 'none'}');
+
+        setState(() {
+          _isLoadingStandings = false;
+          _hasStandingsError = true;
+        });
+      }
+    } catch (error) {
+      print('ERROR in standings data loading: $error');
+      setState(() {
+        _isLoadingStandings = false;
+        _hasStandingsError = true;
+      });
+    }
+    print('===== END STANDINGS DEBUG =====');
+  }
+
+  // Helper method to build loading/error/empty state
+  Widget _buildLoadingOrErrorState(bool isLoading, bool hasError, String emptyMessage) {
+    if (isLoading) {
+      return SliverToBoxAdapter(child: Container(height: 200, child: Center(child: CircularProgressIndicator())));
+    }
+
+    if (hasError) {
+      return SliverToBoxAdapter(
+        child: Container(
+          height: 200,
+          padding: EdgeInsets.all(16),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 36),
+                SizedBox(height: 8),
+                Text(
+                  "Failed to load data",
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SliverToBoxAdapter(
+      child: Container(
+        height: 200,
+        padding: EdgeInsets.all(16),
+        child: Center(
+          child: Text(
+            emptyMessage,
+            style: TextStyle(
+              fontSize: 16,
+              fontStyle: FontStyle.italic,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   // Placeholder widgets for different segments
   Widget _buildSegmentContent(TeamInfoSegment segment) {
     switch (segment) {
       case TeamInfoSegment.upcoming:
-      case TeamInfoSegment.scores:
+        if (_isLoadingGames) {
+          return _buildLoadingOrErrorState(true, false, "");
+        }
+
+        if (_hasGamesError) {
+          return _buildLoadingOrErrorState(false, true, "");
+        }
+
+        if (_upcomingGames.isEmpty) {
+          return _buildLoadingOrErrorState(false, false, "No upcoming games for this team");
+        }
+
         return SliverPadding(
           padding: const EdgeInsets.all(16.0),
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, // Number of columns
+              crossAxisCount: 2,
               crossAxisSpacing: 16.0,
               mainAxisSpacing: 16.0,
-              mainAxisExtent: 190.0, // Set fixed height for game items
+              mainAxisExtent: 190.0,
             ),
-            delegate: SliverChildBuilderDelegate((context, index) {
-              return GameWidget(game: _mockGames[index]);
-            }, childCount: _mockGames.length),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => GameWidget(game: _upcomingGames[index]),
+              childCount: _upcomingGames.length,
+            ),
           ),
         );
+
+      case TeamInfoSegment.scores:
+        if (_isLoadingGames) {
+          return _buildLoadingOrErrorState(true, false, "");
+        }
+
+        if (_hasGamesError) {
+          return _buildLoadingOrErrorState(false, true, "");
+        }
+
+        if (_playedGames.isEmpty) {
+          return _buildLoadingOrErrorState(false, false, "No completed games for this team");
+        }
+
+        return SliverPadding(
+          padding: const EdgeInsets.all(16.0),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16.0,
+              mainAxisSpacing: 16.0,
+              mainAxisExtent: 190.0,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => GameWidget(game: _playedGames[index]),
+              childCount: _playedGames.length,
+            ),
+          ),
+        );
+
       case TeamInfoSegment.standings:
+        if (_isLoadingStandings) {
+          return _buildLoadingOrErrorState(true, false, "");
+        }
+
+        if (_hasStandingsError) {
+          return _buildLoadingOrErrorState(false, true, "");
+        }
+
+        if (_standingsData.isEmpty) {
+          return _buildLoadingOrErrorState(false, false, "No standings data available");
+        }
+
+        return SliverPadding(
+          padding: const EdgeInsets.all(16.0),
+          sliver: SliverToBoxAdapter(child: StandingsTable(standings: _standingsData, homeTeamName: widget.team.name)),
+        );
+
+      case TeamInfoSegment.roster:
+        // For now, keep the roster as a placeholder
         return SliverPadding(
           padding: const EdgeInsets.all(16.0),
           sliver: SliverToBoxAdapter(
-            child: StandingsTable(
-              standings: _mockStandings,
-              homeTeamName: widget.team.name, // Highlight the current team
+            child: Container(
+              height: 200,
+              child: Center(
+                child: Text(
+                  'Roster information coming soon',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontStyle: FontStyle.italic,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+              ),
             ),
           ),
-        );
-      case TeamInfoSegment.roster:
-        return SliverPadding(
-          padding: const EdgeInsets.all(16.0),
-          sliver: SliverToBoxAdapter(child: Center(child: Text('${widget.team.name} - Roster Content'))),
-        );
-      default:
-        return SliverPadding(
-          padding: const EdgeInsets.all(16.0),
-          sliver: SliverToBoxAdapter(child: Center(child: Text('Select a segment'))),
         );
     }
   }
@@ -160,7 +485,12 @@ class _TeamPageState extends State<TeamPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: Text(widget.team.name, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+                          child: Text(
+                            widget.team.name,
+                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         Icon(widget.team.sportIcon, size: 36, color: theme.colorScheme.onSurfaceVariant),
                       ],
@@ -225,7 +555,6 @@ class _TeamPageState extends State<TeamPage> {
                   ButtonSegment(value: TeamInfoSegment.upcoming, label: Text('Upcoming')),
                   ButtonSegment(value: TeamInfoSegment.scores, label: Text('Scores')),
                   ButtonSegment(value: TeamInfoSegment.standings, label: Text('Standings')),
-                  ButtonSegment(value: TeamInfoSegment.roster, label: Text('Roster')),
                 ],
                 selected: {_selectedSegment},
                 onSelectionChanged: (Set<TeamInfoSegment> newSelection) {

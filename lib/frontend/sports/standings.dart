@@ -131,6 +131,8 @@ class StandingsTable extends StatelessWidget {
                                   ? theme.colorScheme.error
                                   : theme.colorScheme.onSurface, // Default color
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       flex: 5,
                     ),

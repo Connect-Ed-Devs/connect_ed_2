@@ -1,16 +1,29 @@
+import 'package:connect_ed_2/classes/athlete_article.dart';
 import 'package:connect_ed_2/frontend/setup/opacity_button.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:intl/intl.dart';
 
 class OTWScreen extends StatelessWidget {
   final String bannerTag;
   final String athleteNameTag;
   final String athleteTitleTag;
+  final AthleteArticle article;
 
-  const OTWScreen({super.key, required this.bannerTag, required this.athleteNameTag, required this.athleteTitleTag});
+  const OTWScreen({
+    super.key,
+    required this.bannerTag,
+    required this.athleteNameTag,
+    required this.athleteTitleTag,
+    required this.article,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final String typeTitle = article.type == 'athlete' ? 'Athlete of the Week' : 'Team of the Week';
+    final DateFormat formatter = DateFormat('MMMM d, yyyy');
+    final String formattedDate = formatter.format(article.weekOf);
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -18,7 +31,7 @@ class OTWScreen extends StatelessWidget {
             automaticallyImplyLeading: false,
             pinned: true,
             backgroundColor: Theme.of(context).colorScheme.surface,
-            title: const SizedBox.shrink(), // Clear default title
+            title: const SizedBox.shrink(),
             flexibleSpace: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
                 // Calculate scroll progress
@@ -50,9 +63,10 @@ class OTWScreen extends StatelessWidget {
                             child: Container(
                               decoration: BoxDecoration(
                                 image: DecorationImage(
-                                  image: AssetImage("assets/wooly_test.png"),
+                                  image: NetworkImage(article.imageUrl),
                                   fit: BoxFit.cover,
                                   colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
+                                  onError: (exception, stackTrace) => AssetImage("assets/placeholder_athlete.png"),
                                 ),
                               ),
                             ),
@@ -71,7 +85,11 @@ class OTWScreen extends StatelessWidget {
                             // Image container
                             Container(
                               decoration: BoxDecoration(
-                                image: DecorationImage(image: AssetImage("assets/wooly_test.png"), fit: BoxFit.cover),
+                                image: DecorationImage(
+                                  image: NetworkImage(article.imageUrl),
+                                  fit: BoxFit.cover,
+                                  onError: (exception, stackTrace) => AssetImage("assets/placeholder_athlete.png"),
+                                ),
                               ),
                             ),
                             // Gradient overlay
@@ -119,7 +137,7 @@ class OTWScreen extends StatelessWidget {
                                 child: Material(
                                   color: Colors.transparent,
                                   child: Text(
-                                    "Dylan Woolstencroft",
+                                    article.name,
                                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 36, color: Colors.white),
                                   ),
                                 ),
@@ -130,10 +148,15 @@ class OTWScreen extends StatelessWidget {
                                 child: Material(
                                   color: Colors.transparent,
                                   child: Text(
-                                    "Athlete of the Week",
+                                    typeTitle,
                                     style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w500),
                                   ),
                                 ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                "Week of $formattedDate",
+                                style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.8)),
                               ),
                             ],
                           ),
@@ -167,7 +190,7 @@ class OTWScreen extends StatelessWidget {
                               fit: FlexFit.tight,
                               child: Center(
                                 child: Text(
-                                  "Athlete of the Week",
+                                  typeTitle,
                                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
                                 ),
                               ),
@@ -188,12 +211,26 @@ class OTWScreen extends StatelessWidget {
           SliverToBoxAdapter(
             child: Container(
               padding: EdgeInsets.all(32),
-              child: Text(
-                ''' Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aliquam vel eros a lectus facilisis iaculis. Nam eu iaculis mi, quis auctor magna. Sed facilisis molestie ligula, vitae consequat lorem porttitor ac. Maecenas eu ipsum molestie erat sagittis pulvinar. Aliquam mattis at nisi ut tempor. Mauris libero felis, lacinia sed nulla ac, consectetur bibendum odio. Proin cursus vitae eros eu faucibus. In ac purus ut nibh aliquam hendrerit et quis purus. Etiam posuere nulla quam, et porta risus mattis tincidunt. Morbi vel condimentum ex. Aliquam consequat cursus magna feugiat placerat. Nunc eu urna massa. Curabitur eget fringilla eros. Ut id neque orci.
-
-Maecenas iaculis augue id blandit convallis. Pellentesque rutrum volutpat aliquet. Phasellus interdum iaculis elementum. Ut interdum augue elementum, tempus lorem id, dictum sapien. Donec sagittis metus risus, sed imperdiet quam efficitur ac. Phasellus iaculis ex a ligula consequat ornare. Aliquam elementum, mi eget ornare vulputate, lacus urna elementum nulla, a fringilla enim quam in magna. Pellentesque ornare vestibulum venenatis. Pellentesque pulvinar dui non lacus placerat viverra. Cras et enim ac sapien luctus maximus ac et risus. In venenatis dictum libero sed feugiat. Praesent sit amet eros est.
-
-Vestibulum ut tellus eget neque egestas sodales a et urna. Cras rhoncus lacus id luctus bibendum. Vivamus justo diam, facilisis sit amet erat at, tempor sagittis est. Fusce imperdiet mollis justo, a volutpat sem mollis nec. Donec id risus augue. In pretium massa quis nulla tincidunt, at interdum lectus ullamcorper. Mauris ligula elit, aliquet et ullamcorper id, porta at dolor. Cras id placerat orci, quis porttitor urna. Mauris viverra urna non turpis finibus varius. Quisque dictum neque finibus, scelerisque odio id, blandit erat. Nullam pretium sem id sodales pulvinar. Integer euismod odio a mauris interdum vestibulum.''',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (article.content.isNotEmpty)
+                    Text(article.content, style: TextStyle(fontSize: 16, height: 1.6))
+                  else
+                    Text(
+                      "No additional information available for this featured ${article.type}.",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontStyle: FontStyle.italic,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                  SizedBox(height: 24),
+                  Text(
+                    "Added on: ${DateFormat('MMMM d, yyyy').format(article.createdAt)}",
+                    style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+                  ),
+                ],
               ),
             ),
           ),

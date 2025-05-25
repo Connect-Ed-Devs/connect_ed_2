@@ -3,9 +3,11 @@ import 'dart:math';
 import 'package:connect_ed_2/classes/assessment.dart';
 import 'package:connect_ed_2/classes/calendar_item.dart';
 import 'package:connect_ed_2/classes/schedule_item.dart';
+import 'package:connect_ed_2/classes/menu_section.dart';
 import 'package:connect_ed_2/frontend/calendar/calendar_app_bar.dart';
 import 'package:connect_ed_2/requests/cache_manager.dart';
 import 'package:connect_ed_2/requests/calendar_requests.dart';
+import 'package:connect_ed_2/requests/menu_cache_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_sticky_header/flutter_sticky_header.dart';
@@ -45,6 +47,12 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   late TimeOfDay _scheduleStartTime;
   late TimeOfDay _scheduleEndTime;
 
+  // Add menu data variables
+  Map<DateTime, List<MenuSection>>? _menuData;
+  bool _isLoadingMenu = false;
+  bool _hasMenuLoadError = false;
+  Map<int, bool> _expandedMenuSections = {};
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +65,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     _scheduleEndTime = const TimeOfDay(hour: 17, minute: 0);
 
     _loadCalendarData();
+    _loadMenuData();
   }
 
   // Calculate page index from a date
@@ -161,6 +170,48 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
       return _calendarData![normalizedDate]!.assessments;
     }
     return [];
+  }
+
+  // Load menu data from cache manager
+  void _loadMenuData() {
+    // Try to get data from cache first
+    try {
+      _menuData = menuManager.getCachedData();
+      if (_menuData != null) return;
+    } catch (e) {
+      print('Error accessing cached menu: $e');
+    }
+
+    // If no cached data or error, fetch fresh data
+    setState(() {
+      _isLoadingMenu = true;
+    });
+
+    menuManager
+        .fetchData()
+        .then((data) {
+          setState(() {
+            _menuData = data;
+            _isLoadingMenu = false;
+            _hasMenuLoadError = false;
+          });
+        })
+        .catchError((error) {
+          setState(() {
+            _isLoadingMenu = false;
+            _hasMenuLoadError = true;
+          });
+        });
+  }
+
+  // Get menu for the selected date
+  List<MenuSection>? _getMenuForSelectedDate() {
+    if (_menuData == null) return null;
+
+    // Create a normalized date key (without time component)
+    final normalizedDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+
+    return _menuData![normalizedDate];
   }
 
   void _updateScheduleTimeRange() {
@@ -273,6 +324,35 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
       // Use jumpToPage instead of animateToPage to avoid sliding transition
       _dayPageController.jumpToPage(pageIndex);
     }
+  }
+
+  // Toggle menu section expanded state
+  void _toggleMenuSection(int index) {
+    setState(() {
+      _expandedMenuSections[index] = !(_expandedMenuSections[index] ?? false);
+    });
+  }
+
+  // Format section titles with proper capitalization
+  String _formatSectionTitle(String title) {
+    if (title.isEmpty) return '';
+
+    // Split by spaces, capitalize each word, rejoin
+    return title
+        .split(' ')
+        .map((word) => word.isNotEmpty ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}' : '')
+        .join(' ');
+  }
+
+  // Properly format food items text
+  String _formatFoodItems(String text) {
+    // Replace literal "\n" sequences with actual newlines
+    String processed = text.replaceAll('\\n', '\n');
+
+    // Trim extra whitespace around lines
+    processed = processed.split('\n').map((line) => line.trim()).join('\n');
+
+    return processed;
   }
 
   // Build the time slots for the schedule
@@ -532,6 +612,101 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     );
   }
 
+  Widget _buildMenuSection() {
+    final menuSections = _getMenuForSelectedDate();
+
+    // If no menu for this day, don't show the section
+    if (menuSections == null || menuSections.isEmpty) {
+      return SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    return SliverStickyHeader(
+      header: Container(
+        padding: const EdgeInsets.only(left: 16.0, top: 24.0, bottom: 8.0),
+        color: Theme.of(context).colorScheme.surface,
+        child: Text("Menu", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+      ),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate((context, index) {
+          if (index >= menuSections.length) return null;
+
+          final menuSection = menuSections[index];
+          if (menuSection.isEmpty) return SizedBox.shrink();
+
+          final isExpanded = _expandedMenuSections[index] ?? false;
+          final formattedTitle = _formatSectionTitle(menuSection.sectionTitle);
+
+          return Container(
+            margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Replace InkWell with GestureDetector and use AnimatedOpacity
+                GestureDetector(
+                  onTap: () => _toggleMenuSection(index),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          formattedTitle,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        AnimatedOpacity(
+                          opacity: isExpanded ? 1.0 : 0.6,
+                          duration: const Duration(milliseconds: 200),
+                          child: Icon(
+                            isExpanded ? Icons.expand_less : Icons.expand_more,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Direct conditional content instead of animated crossfade
+                if (isExpanded)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children:
+                          menuSection.courses.map((course) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12.0, top: 8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _formatSectionTitle(course[0]),
+                                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(_formatFoodItems(course[1]), style: TextStyle(fontSize: 12)),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                    ),
+                  ),
+                // Change divider color to tertiary and reduce height
+                Divider(
+                  height: 1, // Reduced height
+                  color: Theme.of(context).colorScheme.tertiary,
+                ),
+              ],
+            ),
+          );
+        }, childCount: menuSections.length),
+      ),
+    );
+  }
+
   Widget _buildAssessmentsSection() {
     final assessments = _getAssessmentsForSelectedDate();
 
@@ -675,6 +850,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   Widget build(BuildContext context) {
     final assessments = _getAssessmentsForSelectedDate();
     final bool hasAssessments = assessments.isNotEmpty || _isLoading || _hasDataLoadError;
+    final hasMenu = _getMenuForSelectedDate()?.isNotEmpty ?? false;
 
     return Scaffold(
       body: RefreshIndicator(
@@ -682,15 +858,22 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
           // Force refresh data and wait for completion
           setState(() {
             _isLoading = true;
+            _isLoadingMenu = true;
             _errorMessage = null;
             _hasDataLoadError = false;
           });
 
           try {
-            final newData = await calendarManager.fetchData();
+            // Refresh calendar data
+            final newCalendarData = await calendarManager.fetchData();
+            // Refresh menu data
+            final newMenuData = await menuManager.fetchData();
+
             setState(() {
-              _calendarData = newData;
+              _calendarData = newCalendarData;
+              _menuData = newMenuData;
               _isLoading = false;
+              _isLoadingMenu = false;
               _errorMessage = null;
               _hasDataLoadError = false;
               _updateScheduleTimeRange();
@@ -698,6 +881,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
           } catch (error) {
             setState(() {
               _isLoading = false;
+              _isLoadingMenu = false;
               _errorMessage = _parseErrorMessage(error.toString());
               _hasDataLoadError = true;
             });
@@ -708,7 +892,10 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
                 action: SnackBarAction(
                   label: 'Retry',
                   textColor: Theme.of(context).colorScheme.onError,
-                  onPressed: _loadCalendarData,
+                  onPressed: () {
+                    _loadCalendarData();
+                    _loadMenuData();
+                  },
                 ),
               ),
             );
@@ -732,6 +919,9 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
             // Schedule section
             _buildScheduleSection(),
 
+            // Menu section (only if available for selected date)
+            _buildMenuSection(),
+
             // Only include assessments section if there are assessments
             if (hasAssessments) _buildAssessmentsSection(),
 
@@ -739,12 +929,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
             SliverFillRemaining(
               hasScrollBody: false,
               fillOverscroll: true,
-              child: Container(
-                // This ensures there's enough content to scroll
-                // so the app bar can fully collapse
-                height: MediaQuery.of(context).size.height * 0.6,
-                color: Colors.transparent,
-              ),
+              child: Container(height: MediaQuery.of(context).size.height * 0.6, color: Colors.transparent),
             ),
           ],
         ),
