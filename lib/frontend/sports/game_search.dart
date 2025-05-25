@@ -1,5 +1,6 @@
 import 'package:connect_ed_2/classes/game.dart';
 import 'package:connect_ed_2/frontend/sports/game_widgets.dart';
+import 'package:connect_ed_2/requests/games_cache_manager.dart'; // Add games cache manager
 import 'package:flutter/material.dart';
 
 class GameSearchPage extends StatefulWidget {
@@ -22,29 +23,14 @@ class _GameSearchPageState extends State<GameSearchPage> {
   final List<String> _seasonOptions = ["Fall", "Winter", "Spring"];
   final List<String> _statusOptions = ["Played", "Upcoming"];
 
-  // Dummy game data
-  final List<Game> _allGames = List.generate(
-    20,
-    (index) => Game(
-      homeTeam: "Team ${String.fromCharCode(65 + index)}",
-      homeabbr: "T${String.fromCharCode(65 + index)}",
-      homeLogo: "assets/team_a_logo.png",
-      awayTeam: "Team ${String.fromCharCode(85 + index)}",
-      awayabbr: "T${String.fromCharCode(85 + index)}",
-      awayLogo: "assets/team_b_logo.png",
-      date: DateTime.now().add(Duration(days: (index - 10) * 3)), // Mix of past and future
-      time: "${(index % 12) + 1}:00 PM",
-      homeScore: (index % 3 == 0 && index <= 10) ? "${20 + index}" : "-", // Scores for some past games
-      awayScore: (index % 3 == 0 && index <= 10) ? "${18 + index}" : "-",
-      sportsID: index % 5,
-      sportsName: ["Football", "Basketball", "Soccer", "Volleyball", "Baseball"][index % 5],
-      term: ["Fall 2023", "Winter 2023", "Spring 2024", "Fall 2024", "Winter 2024"][index % 5],
-      leagueCode: "NCAA",
-    ),
-  );
-
+  // Real game data storage
+  Map<String, Game> _allGames = {};
   List<Game> _filteredGames = [];
-  final Duration _animationDuration = const Duration(milliseconds: 600); // Longer animation duration
+  bool _isLoading = true;
+  bool _hasLoadError = false;
+  String? _errorMessage;
+
+  final Duration _animationDuration = const Duration(milliseconds: 600);
 
   @override
   void initState() {
@@ -62,11 +48,10 @@ class _GameSearchPageState extends State<GameSearchPage> {
       }
     }
 
-    _filteredGames = _allGames;
     _searchController.addListener(_updateFilteredGames);
 
-    // Trigger initial filtering to apply the selected chip
-    _updateFilteredGames();
+    // Load games data
+    _loadGamesData();
   }
 
   @override
@@ -75,6 +60,43 @@ class _GameSearchPageState extends State<GameSearchPage> {
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  // Load games data from cache manager
+  Future<void> _loadGamesData() async {
+    setState(() {
+      _isLoading = true;
+      _hasLoadError = false;
+    });
+
+    try {
+      // Try to get cached data first
+      Map<String, Game>? cachedGames;
+      try {
+        cachedGames = gamesManager.getCachedData();
+      } catch (e) {
+        print('Error accessing cached games: $e');
+      }
+
+      // If no cached data, fetch fresh data
+      if (cachedGames == null) {
+        cachedGames = await gamesManager.fetchData();
+      }
+
+      // Process the games data
+      setState(() {
+        _allGames = cachedGames ?? {};
+        _updateFilteredGames();
+        _isLoading = false;
+      });
+    } catch (error) {
+      setState(() {
+        _isLoading = false;
+        _hasLoadError = true;
+        _errorMessage = error.toString();
+      });
+      print('Error loading games data: $error');
+    }
   }
 
   void _toggleSearch() {
@@ -91,9 +113,11 @@ class _GameSearchPageState extends State<GameSearchPage> {
 
   void _updateFilteredGames() {
     final query = _searchController.text.toLowerCase();
+    final now = DateTime.now();
+
     setState(() {
       _filteredGames =
-          _allGames.where((game) {
+          _allGames.values.where((game) {
             final bool matchesSearch =
                 query.isEmpty ||
                 game.homeTeam.toLowerCase().contains(query) ||
@@ -104,20 +128,40 @@ class _GameSearchPageState extends State<GameSearchPage> {
                 _selectedSeasonChips.isEmpty ||
                 _selectedSeasonChips.any((season) => game.term.toLowerCase().contains(season.toLowerCase()));
 
+            final bool isPlayed = game.date.isBefore(now) && game.homeScore != '-' && game.awayScore != '-';
+            final bool isUpcoming = game.date.isAfter(now) || (game.homeScore == '-' && game.awayScore == '-');
+
             final bool matchesStatus =
                 _selectedStatusChips.isEmpty ||
                 _selectedStatusChips.any((status) {
                   if (status == "Played") {
-                    return game.homeScore != "-" && game.awayScore != "-";
+                    return isPlayed;
                   }
                   if (status == "Upcoming") {
-                    return (game.homeScore == "-" && game.awayScore == "-") || game.date.isAfter(DateTime.now());
+                    return isUpcoming;
                   }
                   return false;
                 });
 
             return matchesSearch && matchesSeason && matchesStatus;
           }).toList();
+
+      // Sort by date - played games most recent first, upcoming games closest first
+      _filteredGames.sort((a, b) {
+        final bool aIsPlayed = a.date.isBefore(now) && a.homeScore != '-' && a.awayScore != '-';
+        final bool bIsPlayed = b.date.isBefore(now) && b.homeScore != '-' && b.awayScore != '-';
+
+        if (aIsPlayed && bIsPlayed) {
+          // Both played - most recent first
+          return b.date.compareTo(a.date);
+        } else if (!aIsPlayed && !bIsPlayed) {
+          // Both upcoming - closest first
+          return a.date.compareTo(b.date);
+        } else {
+          // Played first, then upcoming
+          return aIsPlayed ? -1 : 1;
+        }
+      });
     });
   }
 
@@ -415,10 +459,35 @@ class _GameSearchPageState extends State<GameSearchPage> {
               ),
             ),
           ),
+
           SliverPadding(
             padding: const EdgeInsets.all(16.0),
             sliver:
-                _filteredGames.isEmpty
+                _isLoading
+                    ? SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
+                    : _hasLoadError
+                    ? SliverFillRemaining(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+                            SizedBox(height: 16),
+                            Text(
+                              "Failed to load games",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: theme.colorScheme.error,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            ElevatedButton(onPressed: _loadGamesData, child: Text("Retry")),
+                          ],
+                        ),
+                      ),
+                    )
+                    : _filteredGames.isEmpty
                     ? SliverFillRemaining(
                       child: Center(
                         child: Text(
@@ -437,7 +506,7 @@ class _GameSearchPageState extends State<GameSearchPage> {
                         crossAxisCount: 2,
                         crossAxisSpacing: 16.0,
                         mainAxisSpacing: 16.0,
-                        mainAxisExtent: 160.0,
+                        mainAxisExtent: 190.0,
                       ),
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => GameWidget(game: _filteredGames[index]),

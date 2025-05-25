@@ -1,32 +1,22 @@
 import 'package:connect_ed_2/classes/game.dart';
+import 'package:connect_ed_2/classes/standings_list.dart';
 import 'package:connect_ed_2/frontend/setup/app_bar.dart';
-import 'package:connect_ed_2/frontend/sports/game_widgets.dart'; // Added for GameWidget
-import 'package:connect_ed_2/frontend/sports/standings.dart'; // Added for StandingsTable
-import 'package:connect_ed_2/classes/standings_item.dart'; // Added for StandingsItem
-import 'package:connect_ed_2/frontend/setup/segmented_button.dart'; // Import the new CustomSegmentedButton
+import 'package:connect_ed_2/frontend/sports/game_widgets.dart';
+import 'package:connect_ed_2/frontend/sports/standings.dart';
+import 'package:connect_ed_2/classes/standings_item.dart';
+import 'package:connect_ed_2/frontend/setup/segmented_button.dart';
+import 'package:connect_ed_2/requests/games_cache_manager.dart';
+import 'package:connect_ed_2/requests/standings_cache_manager.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 enum GameInfoSegment { standings, upcomingGames }
 
 class GamePage extends StatefulWidget {
-  GamePage({super.key});
+  final Game game;
 
-  final Game pageGame = Game(
-    homeTeam: "Eagles",
-    homeabbr: "EAG",
-    homeLogo: "assets/team_a_logo.png",
-    awayTeam: "Tigers",
-    awayabbr: "TIG",
-    awayLogo: "assets/team_b_logo.png",
-    date: DateTime.now().add(Duration(days: 2)),
-    time: "6:30 PM",
-    homeScore: "24",
-    awayScore: "21",
-    sportsID: 1,
-    sportsName: "Football",
-    term: "Fall 2023",
-    leagueCode: "NCAA",
-  );
+  // Constructor now requires a Game object
+  const GamePage({super.key, required this.game});
 
   @override
   State<GamePage> createState() => _GamePageState();
@@ -35,70 +25,266 @@ class GamePage extends StatefulWidget {
 class _GamePageState extends State<GamePage> {
   GameInfoSegment _selectedSegment = GameInfoSegment.upcomingGames;
 
-  // Dummy data for upcoming games
-  final List<Game> _upcomingGames = List.generate(
-    5,
-    (index) => Game(
-      homeTeam: "Team ${String.fromCharCode(65 + index + 5)}", // Different teams for upcoming
-      homeabbr: "T${String.fromCharCode(65 + index + 5)}",
-      homeLogo: "assets/team_b_logo.png", // Placeholder logo
-      awayTeam: "Team ${String.fromCharCode(70 + index + 5)}",
-      awayabbr: "T${String.fromCharCode(70 + index + 5)}",
-      awayLogo: "assets/team_a_logo.png", // Placeholder logo
-      date: DateTime.now().add(Duration(days: index + 7)), // Further in future
-      time: "${5 + index}:30 PM",
-      homeScore: "-",
-      awayScore: "-",
-      sportsID: 1,
-      sportsName: "Football",
-      term: "Fall 2023",
-      leagueCode: "NCAA",
-    ),
-  );
+  // Data states
+  bool _isLoadingGames = true;
+  bool _isLoadingStandings = true;
+  bool _hasGamesError = false;
+  bool _hasStandingsError = false;
+  List<Game> _upcomingGames = [];
+  List<StandingsItem> _standingsData = [];
+  String _sportName = "";
 
-  // Dummy data for standings
-  final List<StandingsItem> _standingsData = List.generate(
-    5,
-    (index) => StandingsItem(
-      rank: index + 1,
-      teamName: "Team ${String.fromCharCode(65 + index)}", // Corresponds to pageGame teams if A=Eagles, B=Tigers etc.
-      teamAbbreviation: "T${String.fromCharCode(65 + index)}",
-      wins: 10 - index * 2,
-      losses: index + 1,
-      ties: index % 2, // some ties
-      matchesPlayed: 10 - index * 2 + index + 1 + (index % 2),
-      points: (10 - index * 2) * 3 + (index % 2), // 3 for win, 1 for tie
-    ),
-  );
+  @override
+  void initState() {
+    super.initState();
+    _loadGameData();
+    _loadStandingsData();
+  }
+
+  // Load upcoming games for the same sport
+  Future<void> _loadGameData() async {
+    setState(() {
+      _isLoadingGames = true;
+      _hasGamesError = false;
+    });
+
+    try {
+      // Get cached data first
+      Map<String, Game>? cachedGames;
+      try {
+        cachedGames = gamesManager.getCachedData();
+      } catch (e) {
+        print('Error accessing cached games: $e');
+      }
+
+      // If no cached data, fetch fresh
+      if (cachedGames == null) {
+        cachedGames = await gamesManager.fetchData();
+      }
+
+      // Filter games by same sport and upcoming dates
+      final now = DateTime.now();
+      final List<Game> filteredGames =
+          cachedGames?.values
+              .where(
+                (game) =>
+                    game.sportsName == widget.game.sportsName &&
+                    (game.date.isAfter(now) || (game.homeScore == '-' && game.awayScore == '-')),
+              )
+              .toList() ??
+          [];
+
+      // Sort by date (closest first)
+      filteredGames.sort((a, b) => a.date.compareTo(b.date));
+
+      setState(() {
+        // Take up to 5 games
+        _upcomingGames = filteredGames.take(5).toList();
+        _sportName = widget.game.sportsName;
+        _isLoadingGames = false;
+      });
+    } catch (error) {
+      setState(() {
+        _isLoadingGames = false;
+        _hasGamesError = true;
+      });
+      print('Error loading games: $error');
+    }
+  }
+
+  // Load standings data
+  Future<void> _loadStandingsData() async {
+    print('===== STANDINGS DEBUG =====');
+    print('Starting _loadStandingsData()');
+    print('Game leagueCode: ${widget.game.leagueCode}');
+
+    setState(() {
+      _isLoadingStandings = true;
+      _hasStandingsError = false;
+    });
+
+    try {
+      // Get cached data first
+      Map<String, StandingsList>? cachedStandings;
+      try {
+        print('Attempting to get cached standings data');
+        cachedStandings = standingsManager.getCachedData();
+        if (cachedStandings != null) {
+          print('Got cached standings: ${cachedStandings.length} league(s)');
+          print('Available leagues: ${cachedStandings.keys.join(', ')}');
+        } else {
+          print('No cached standings data available');
+        }
+      } catch (e) {
+        print('Error accessing cached standings: $e');
+      }
+
+      // If no cached data, fetch fresh
+      if (cachedStandings == null) {
+        print('Fetching fresh standings data from network');
+        cachedStandings = await standingsManager.fetchData();
+        print('Fresh standings data fetched: ${cachedStandings?.length} league(s)');
+        print('Available leagues: ${cachedStandings?.keys.join(', ')}');
+      }
+
+      // Find standings for this league
+      final leagueCode = widget.game.leagueCode;
+      print('Looking for standings with league code: $leagueCode');
+
+      if (cachedStandings != null && cachedStandings.containsKey(leagueCode)) {
+        print('League code $leagueCode found in standings data');
+
+        final standingsList = cachedStandings[leagueCode];
+        if (standingsList != null) {
+          print('StandingsList for $leagueCode contains ${standingsList.standings.length} team(s)');
+
+          setState(() {
+            _standingsData = standingsList.standings;
+            _isLoadingStandings = false;
+          });
+          print('Standings data loaded successfully');
+        } else {
+          print('ERROR: StandingsList for $leagueCode is null (unexpected)');
+          setState(() {
+            _isLoadingStandings = false;
+            _hasStandingsError = true;
+          });
+        }
+      } else {
+        print('ERROR: League code $leagueCode not found in standings data');
+        print('Available leagues: ${cachedStandings?.keys.join(', ') ?? 'none'}');
+
+        setState(() {
+          _isLoadingStandings = false;
+          _hasStandingsError = true;
+        });
+      }
+    } catch (error) {
+      print('ERROR in standings data loading: $error');
+      setState(() {
+        _isLoadingStandings = false;
+        _hasStandingsError = true;
+      });
+    }
+    print('===== END STANDINGS DEBUG =====');
+  }
+
+  // Format date to "Month D, YYYY" format
+  String _formatDate(DateTime date) {
+    return DateFormat('MMMM d, yyyy').format(date);
+  }
+
+  // Helper method to format time by removing AM/PM
+  String _formatTime(String time) {
+    // Simply remove AM/PM from the time string
+    return time.replaceAll('AM', '').replaceAll('PM', '').replaceAll('am', '').replaceAll('pm', '').trim();
+  }
 
   Widget _buildUpcomingGamesContent() {
+    if (_isLoadingGames) {
+      return Container(height: 190, child: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_hasGamesError) {
+      return Container(
+        height: 190,
+        padding: EdgeInsets.all(16),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 36),
+              SizedBox(height: 8),
+              Text(
+                "Failed to load upcoming games",
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_upcomingGames.isEmpty) {
+      return Container(
+        height: 190,
+        padding: EdgeInsets.all(16),
+        child: Center(
+          child: Text(
+            "No upcoming games scheduled",
+            style: TextStyle(
+              fontSize: 16,
+              fontStyle: FontStyle.italic,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
       height: 190,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        // Add padding here if you want space around the list itself
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         itemCount: _upcomingGames.length,
         itemBuilder: (context, index) {
-          return Padding(
-            // Padding for individual GameWidget
-            padding: const EdgeInsets.only(right: 16),
-            child: GameWidget(game: _upcomingGames[index]),
-          );
+          return Padding(padding: const EdgeInsets.only(right: 16), child: GameWidget(game: _upcomingGames[index]));
         },
       ),
     );
   }
 
   Widget _buildStandingsContent() {
-    // StandingsTable likely handles its own internal padding for rows/header.
-    // Add padding here if the whole table needs to be inset.
+    if (_isLoadingStandings) {
+      return Container(height: 200, child: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_hasStandingsError) {
+      return Container(
+        height: 200,
+        padding: EdgeInsets.all(16),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 36),
+              SizedBox(height: 8),
+              Text(
+                "Failed to load standings data",
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_standingsData.isEmpty) {
+      return Container(
+        height: 200,
+        padding: EdgeInsets.all(16),
+        child: Center(
+          child: Text(
+            "No standings data available",
+            style: TextStyle(
+              fontSize: 16,
+              fontStyle: FontStyle.italic,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0), // Add vertical padding if needed
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: StandingsTable(
         standings: _standingsData,
-        homeTeamName: widget.pageGame.homeTeam,
-        opposingTeamName: widget.pageGame.awayTeam,
+        homeTeamName: widget.game.homeTeam,
+        opposingTeamName: widget.game.awayTeam,
       ),
     );
   }
@@ -108,7 +294,7 @@ class _GamePageState extends State<GamePage> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          CEAppBar(title: "${widget.pageGame.homeabbr} v ${widget.pageGame.awayabbr}", showBackButton: true),
+          CEAppBar(title: "${widget.game.homeabbr} v ${widget.game.awayabbr}", showBackButton: true),
           SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,7 +302,8 @@ class _GamePageState extends State<GamePage> {
                 Padding(
                   padding: const EdgeInsets.only(left: 16),
                   child: Text(
-                    'Final',
+                    // Show "Final" for games with scores, otherwise "Upcoming"
+                    widget.game.homeScore != '-' && widget.game.awayScore != '-' ? 'Final' : 'Upcoming',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
                       fontSize: 16,
@@ -136,42 +323,37 @@ class _GamePageState extends State<GamePage> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     spacing: 16,
                     children: [
-                      Row(
+                      // Home team
+                      Column(
                         mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
-                        spacing: 16,
                         children: [
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            spacing: 8,
-                            children: [
-                              Container(width: 64, height: 60, color: Colors.blue),
-                              Text(
-                                widget.pageGame.homeabbr,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
-                                  fontSize: 16,
-                                  fontFamily: 'Montserrat',
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                          // Replace the color box with the team logo
+                          _buildTeamLogo(widget.game.homeabbr),
+                          SizedBox(height: 8),
+                          Text(
+                            widget.game.homeabbr,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+                              fontSize: 16,
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
                       ),
+
+                      // Score section
                       Container(
-                        width: 143,
+                        width: 140,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.center,
-                          spacing: 16,
                           children: [
                             Text(
-                              '${widget.pageGame.date.month}.${widget.pageGame.date.day}.${widget.pageGame.date.year} | ${widget.pageGame.time}',
+                              _formatDate(widget.game.date) + ' | ' + _formatTime(widget.game.time),
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
                                 fontSize: 12,
@@ -179,16 +361,16 @@ class _GamePageState extends State<GamePage> {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
+                            SizedBox(height: 8),
                             Container(
                               width: double.infinity,
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 crossAxisAlignment: CrossAxisAlignment.center,
-                                spacing: 32,
                                 children: [
                                   Text(
-                                    widget.pageGame.homeScore,
+                                    _formatScore(widget.game.homeScore),
                                     style: TextStyle(
                                       fontSize: 24,
                                       fontFamily: 'Montserrat',
@@ -205,7 +387,7 @@ class _GamePageState extends State<GamePage> {
                                     ),
                                   ),
                                   Text(
-                                    widget.pageGame.awayScore,
+                                    _formatScore(widget.game.awayScore),
                                     style: TextStyle(
                                       fontSize: 24,
                                       fontFamily: 'Montserrat',
@@ -215,8 +397,9 @@ class _GamePageState extends State<GamePage> {
                                 ],
                               ),
                             ),
+                            SizedBox(height: 8),
                             Text(
-                              widget.pageGame.sportsName.toUpperCase(),
+                              widget.game.sportsName.toUpperCase(),
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
                                 fontSize: 12,
@@ -227,29 +410,24 @@ class _GamePageState extends State<GamePage> {
                           ],
                         ),
                       ),
-                      Row(
+
+                      // Away team
+                      Column(
                         mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
-                        spacing: 16,
                         children: [
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            spacing: 8,
-                            children: [
-                              Container(width: 64, height: 60, color: Colors.blue),
-                              Text(
-                                widget.pageGame.awayabbr,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
-                                  fontSize: 16,
-                                  fontFamily: 'Montserrat',
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                          // Replace the color box with the team logo
+                          _buildTeamLogo(widget.game.awayabbr),
+                          SizedBox(height: 8),
+                          Text(
+                            widget.game.awayabbr,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+                              fontSize: 16,
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
                       ),
@@ -259,6 +437,7 @@ class _GamePageState extends State<GamePage> {
               ],
             ),
           ),
+
           SliverToBoxAdapter(
             child: Container(
               // Remove horizontal padding to allow SegmentedButton to go edge-to-edge
@@ -319,10 +498,39 @@ class _GamePageState extends State<GamePage> {
                     ? _buildUpcomingGamesContent()
                     : _buildStandingsContent(),
           ),
+
           SliverToBoxAdapter(
             child: SizedBox(height: MediaQuery.of(context).viewPadding.bottom + 24),
           ), // Ensure space at bottom
         ],
+      ),
+    );
+  }
+
+  // Helper method to format scores
+  String _formatScore(String score) {
+    return score == '-' ? '--' : score;
+  }
+
+  // Helper method to build team logo
+  Widget _buildTeamLogo(String abbr) {
+    return Container(
+      width: 64,
+      height: 60,
+      child: Image.asset(
+        "assets/$abbr Logo.png",
+        errorBuilder: (context, error, stackTrace) {
+          // If image not found, show a placeholder
+          return Container(
+            width: 64,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(child: Icon(Icons.shield_outlined, size: 32, color: Theme.of(context).colorScheme.primary)),
+          );
+        },
       ),
     );
   }

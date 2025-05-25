@@ -4,6 +4,7 @@ import 'dart:math'; // Added for max function in dialog
 import 'package:connect_ed_2/classes/assessment.dart';
 import 'package:connect_ed_2/classes/calendar_item.dart';
 import 'package:connect_ed_2/classes/game.dart';
+import 'package:connect_ed_2/classes/menu_section.dart';
 import 'package:connect_ed_2/classes/schedule_item.dart';
 import 'package:connect_ed_2/frontend/home/today_schedule.dart';
 import 'package:connect_ed_2/frontend/settings/settings.dart';
@@ -12,8 +13,12 @@ import 'package:connect_ed_2/frontend/setup/opacity_button.dart';
 import 'package:connect_ed_2/frontend/sports/game_widgets.dart';
 import 'package:connect_ed_2/requests/cache_manager.dart';
 import 'package:connect_ed_2/requests/calendar_requests.dart';
+import 'package:connect_ed_2/requests/games_cache_manager.dart';
+import 'package:connect_ed_2/requests/menu_cache_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
+import 'menu_dialog.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -33,6 +38,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   String? _errorMessage; // Add error message state
   bool _hasDataLoadError = false; // Track if there's a data loading error
 
+  // Add state variable for menu data
+  bool _isLoadingMenu = false;
+  bool _hasMenuLoadError = false;
+  String? _menuErrorMessage;
+
+  // Add game data variables
+  bool _isLoadingGames = true;
+  bool _hasGamesError = false;
+  String? _gamesErrorMessage;
+  List<Game> _recentGames = [];
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +59,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
     // Load calendar data when the widget initializes
     _loadCalendarData();
+
+    // Load games data
+    _loadGamesData();
   }
 
   // Load calendar data from the cache manager
@@ -231,6 +250,172 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
+  void _showTodayMenuDialog() async {
+    setState(() {
+      _isLoadingMenu = true;
+      _hasMenuLoadError = false;
+      _menuErrorMessage = null;
+    });
+
+    // Show loading dialog first
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Text("Today's Menu"),
+                SizedBox(width: 12),
+                SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+              ],
+            ),
+            content: Text("Loading menu items..."),
+          ),
+    );
+
+    try {
+      // Get today's date without time
+      final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+
+      // Try to get data from cache first
+      Map<DateTime, List<MenuSection>>? menuData;
+      try {
+        menuData = menuManager.getCachedData();
+      } catch (e) {
+        print('Error accessing cached menu: $e');
+      }
+
+      // If no cached data or error, try to fetch fresh data
+      if (menuData == null) {
+        menuData = await menuManager.fetchData();
+      }
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      // Check if today's menu exists
+      List<MenuSection>? todayMenu = menuData?[today];
+
+      if (todayMenu == null || todayMenu.isEmpty) {
+        _showNoMenuDialog();
+      } else {
+        _showMenuContentDialog(todayMenu);
+      }
+
+      setState(() {
+        _isLoadingMenu = false;
+      });
+    } catch (e) {
+      // Close loading dialog
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+
+      setState(() {
+        _isLoadingMenu = false;
+        _hasMenuLoadError = true;
+        _menuErrorMessage = "Failed to load the menu: ${e.toString()}";
+      });
+
+      _showMenuErrorDialog(e.toString());
+    }
+  }
+
+  void _showNoMenuDialog() {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text("No Menu Available"),
+            content: Text("There's no menu available for today."),
+            actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text("CLOSE"))],
+          ),
+    );
+  }
+
+  void _showMenuErrorDialog(String errorMessage) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text("Menu Error"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Failed to load the menu."),
+                SizedBox(height: 8),
+                Text(errorMessage, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.error)),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: Text("CLOSE")),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _showTodayMenuDialog(); // Retry loading
+                },
+                child: Text("RETRY"),
+              ),
+            ],
+          ),
+    );
+  }
+
+  void _showMenuContentDialog(List<MenuSection> menuSections) {
+    showDialog(context: context, builder: (context) => MenuDialog(menuSections: menuSections));
+  }
+
+  // Load games data from the cache manager
+  Future<void> _loadGamesData() async {
+    setState(() {
+      _isLoadingGames = true;
+      _hasGamesError = false;
+      _gamesErrorMessage = null;
+    });
+
+    try {
+      // Get cached data first
+      Map<String, Game>? cachedGames;
+      try {
+        cachedGames = gamesManager.getCachedData();
+      } catch (e) {
+        print('Error accessing cached games: $e');
+      }
+
+      // If no cached data, fetch fresh
+      if (cachedGames == null) {
+        cachedGames = await gamesManager.fetchData();
+      }
+
+      // Process games data - get recent games with scores
+      if (cachedGames != null) {
+        final now = DateTime.now();
+
+        // Get played games (games with scores)
+        List<Game> playedGames =
+            cachedGames.values.where((game) => game.homeScore != "-" && game.awayScore != "-").toList();
+
+        // Sort by date descending (most recent first)
+        playedGames.sort((a, b) => b.date.compareTo(a.date));
+
+        setState(() {
+          // Take the 5 most recent games
+          _recentGames = playedGames.take(5).toList();
+          _isLoadingGames = false;
+        });
+      }
+    } catch (error) {
+      setState(() {
+        _isLoadingGames = false;
+        _hasGamesError = true;
+        _gamesErrorMessage = error.toString();
+      });
+      print('Error loading games: $error');
+    }
+  }
+
   @override
   void dispose() {
     _animationController.dispose();
@@ -395,21 +580,26 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           child: Opacity(
                             opacity: expandedTitleOpacity,
                             child: SizedBox(
-                              height: 155,
+                              height: 150,
                               child: Column(
                                 children: [
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      IconButton(onPressed: () {}, icon: Icon(Icons.flatware, color: Colors.white)),
-                                      IconButton(
+                                      OpacityIconButton(
+                                        onPressed: _showTodayMenuDialog, // Connect to menu dialog
+                                        icon: Icons.flatware,
+                                        color: Colors.white,
+                                      ),
+                                      OpacityIconButton(
                                         onPressed: () {
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(builder: (context) => SettingsPage()),
                                           );
                                         },
-                                        icon: Icon(Icons.settings_outlined, color: Colors.white),
+                                        icon: Icons.settings_outlined,
+                                        color: Colors.white,
                                       ),
                                     ],
                                   ),
@@ -557,108 +747,63 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [Text("Recent Games", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500))],
+                  children: [
+                    Row(
+                      children: [
+                        Text("Recent Games", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+                        if (_hasGamesError) ...[
+                          SizedBox(width: 8),
+                          Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 20),
+                        ],
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
             SliverToBoxAdapter(
               child: Container(
                 height: 190,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: 5,
-                  itemBuilder: (context, index) {
-                    // Define 5 unique games
-                    final List<Game> games = [
-                      Game(
-                        homeTeam: "Eagles",
-                        homeabbr: "EAG",
-                        homeLogo: "assets/team_a_logo.png",
-                        awayTeam: "Tigers",
-                        awayabbr: "TIG",
-                        awayLogo: "assets/team_b_logo.png",
-                        date: DateTime.now().add(Duration(days: 2)),
-                        time: "6:30 PM",
-                        homeScore: "24",
-                        awayScore: "21",
-                        sportsID: 1,
-                        sportsName: "Football",
-                        term: "Fall 2023",
-                        leagueCode: "NCAA",
-                      ),
-                      Game(
-                        homeTeam: "Warriors",
-                        homeabbr: "WAR",
-                        homeLogo: "assets/team_a_logo.png",
-                        awayTeam: "Bulls",
-                        awayabbr: "BUL",
-                        awayLogo: "assets/team_b_logo.png",
-                        date: DateTime.now().add(Duration(days: 5)),
-                        time: "7:00 PM",
-                        homeScore: "85",
-                        awayScore: "79",
-                        sportsID: 2,
-                        sportsName: "Basketball",
-                        term: "Fall 2023",
-                        leagueCode: "NCAA",
-                      ),
-                      Game(
-                        homeTeam: "Lions",
-                        homeabbr: "LIO",
-                        homeLogo: "assets/team_a_logo.png",
-                        awayTeam: "Cobras",
-                        awayabbr: "COB",
-                        awayLogo: "assets/team_b_logo.png",
-                        date: DateTime.now().add(Duration(days: 1)),
-                        time: "5:00 PM",
-                        homeScore: "2",
-                        awayScore: "1",
-                        sportsID: 3,
-                        sportsName: "Soccer",
-                        term: "Fall 2023",
-                        leagueCode: "NCAA",
-                      ),
-                      Game(
-                        homeTeam: "Sharks",
-                        homeabbr: "SHK",
-                        homeLogo: "assets/team_a_logo.png",
-                        awayTeam: "Wolves",
-                        awayabbr: "WLV",
-                        awayLogo: "assets/team_b_logo.png",
-                        date: DateTime.now().add(Duration(days: 3)),
-                        time: "4:15 PM",
-                        homeScore: "3",
-                        awayScore: "0",
-                        sportsID: 4,
-                        sportsName: "Volleyball",
-                        term: "Fall 2023",
-                        leagueCode: "NCAA",
-                      ),
-                      Game(
-                        homeTeam: "Ravens",
-                        homeabbr: "RAV",
-                        homeLogo: "assets/team_a_logo.png",
-                        awayTeam: "Panthers",
-                        awayabbr: "PAN",
-                        awayLogo: "assets/team_b_logo.png",
-                        date: DateTime.now().add(Duration(days: 7)),
-                        time: "2:00 PM",
-                        homeScore: "5",
-                        awayScore: "3",
-                        sportsID: 5,
-                        sportsName: "Baseball",
-                        term: "Fall 2023",
-                        leagueCode: "NCAA",
-                      ),
-                    ];
-
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
-                      child: GameWidget(game: games[index]),
-                    );
-                  },
-                ),
+                child:
+                    _isLoadingGames
+                        ? Center(child: CircularProgressIndicator())
+                        : _hasGamesError
+                        ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
+                              SizedBox(height: 8),
+                              Text(
+                                "Could not load games",
+                                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                              ),
+                              TextButton(onPressed: _loadGamesData, child: Text("Retry")),
+                            ],
+                          ),
+                        )
+                        : _recentGames.isEmpty
+                        ? Center(
+                          child: Text(
+                            "No recent games found",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontStyle: FontStyle.italic,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                          ),
+                        )
+                        : ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _recentGames.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+                              child: GameWidget(game: _recentGames[index]),
+                            );
+                          },
+                        ),
               ),
             ),
 
