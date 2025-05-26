@@ -55,6 +55,7 @@ class FinishPage extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () {
                     // Navigate to main app and clear navigation stack
+                    prefs.setString('setup', 'complete');
                     Navigator.of(
                       context,
                     ).pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const MyHomePage()), (route) => false);

@@ -139,11 +139,11 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
         textColor = theme.colorScheme.onPrimary;
         fontWeight = FontWeight.w500;
       } else if (isToday) {
-        cellDecoration = null;
+        cellDecoration = BoxDecoration(color: Colors.transparent);
         textColor = theme.colorScheme.primary;
         fontWeight = FontWeight.w500;
       } else {
-        cellDecoration = null;
+        cellDecoration = BoxDecoration(color: Colors.transparent);
         textColor = isCurrentMonth ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withAlpha(127);
       }
 

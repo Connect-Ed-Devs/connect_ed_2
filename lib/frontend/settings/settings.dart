@@ -197,6 +197,17 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
+          const SliverToBoxAdapter(child: SizedBox(height: 64)), // Add some space before the footer
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                "Made by Abdur-Rahman Rana '25\n and Demilade Olawumni '25",
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
         ],
       ),
     );

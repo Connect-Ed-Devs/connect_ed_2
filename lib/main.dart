@@ -42,11 +42,11 @@ class MyApp extends StatelessWidget {
 
   Widget _getInitialScreen() {
     // Check if user has completed setup
-    final String? savedLink = prefs.getString('link');
-    final bool setupComplete = prefs.getBool('setup_complete') ?? false;
+    final String? setup = prefs.getString('setup');
+    final String? link = prefs.getString('link');
 
     // If no link is saved or setup is not complete, show welcome/setup flow
-    if (savedLink == null || savedLink.isEmpty || !setupComplete) {
+    if (setup != "complete") {
       return const WelcomePage();
     }
 

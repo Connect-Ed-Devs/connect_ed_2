@@ -566,7 +566,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
 
     return SliverStickyHeader(
       header: Container(
-        padding: const EdgeInsets.only(top: 24, left: 16.0, bottom: 0.0),
+        padding: const EdgeInsets.only(top: 24, left: 16.0),
         color: Theme.of(context).colorScheme.surface,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -622,7 +622,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
 
     return SliverStickyHeader(
       header: Container(
-        padding: const EdgeInsets.only(left: 16.0, top: 24.0, bottom: 8.0),
+        padding: const EdgeInsets.only(left: 16.0, bottom: 8.0), // Add top padding of 32pts
         color: Theme.of(context).colorScheme.surface,
         child: Text("Menu", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
       ),
@@ -717,7 +717,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
 
     return SliverStickyHeader(
       header: Container(
-        padding: const EdgeInsets.only(left: 16.0),
+        padding: const EdgeInsets.only(left: 16.0, top: 32.0), // Add top padding of 32pts
         color: Theme.of(context).colorScheme.surface,
         child: Row(
           children: [
