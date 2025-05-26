@@ -13,7 +13,7 @@ CacheManager calendarManager = CalendarManager();
 class CalendarManager extends CacheManager {
   CalendarManager({
     String cacheKey = 'calendar_data',
-    Duration smallThreshold = const Duration(minutes: 10),
+    Duration smallThreshold = const Duration(minutes: 30),
     Duration largeThreshold = const Duration(days: 2),
   }) : super(cacheKey: cacheKey, smallThreshold: smallThreshold, largeThreshold: largeThreshold);
 

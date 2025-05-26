@@ -12,7 +12,7 @@ CacheManager standingsManager = StandingsCacheManager();
 class StandingsCacheManager extends CacheManager {
   StandingsCacheManager({
     String cacheKey = 'standings_data',
-    Duration smallThreshold = const Duration(hours: 6),
+    Duration smallThreshold = const Duration(minutes: 10),
     Duration largeThreshold = const Duration(days: 1),
   }) : super(cacheKey: cacheKey, smallThreshold: smallThreshold, largeThreshold: largeThreshold);
 
