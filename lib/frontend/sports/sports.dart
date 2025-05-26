@@ -1,12 +1,11 @@
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // Add this import at the top of the file
 import 'package:connect_ed_2/classes/athlete_article.dart';
 import 'package:connect_ed_2/classes/game.dart';
-import 'package:connect_ed_2/classes/standings_item.dart';
 import 'package:connect_ed_2/frontend/setup/app_bar.dart';
 import 'package:connect_ed_2/frontend/setup/opacity_button.dart';
 import 'package:connect_ed_2/frontend/sports/game_widgets.dart';
 import 'package:connect_ed_2/frontend/sports/otw.dart';
-import 'package:connect_ed_2/frontend/sports/standings.dart';
 import 'package:connect_ed_2/frontend/sports/team_widget.dart';
 import 'package:connect_ed_2/classes/team.dart';
 import 'package:connect_ed_2/frontend/sports/game_search.dart';
@@ -548,18 +547,27 @@ class OTWWidget extends StatelessWidget {
               tag: bannerTag,
               child: Stack(
                 children: [
-                  // Background container with image
-                  Container(
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: NetworkImage(article.imageUrl),
-                        fit: BoxFit.cover,
-                        onError: (exception, stackTrace) => AssetImage("assets/placeholder_athlete.png"),
-                      ),
-                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                  // Replace NetworkImage with CachedNetworkImage
+                  ClipRRect(
+                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                    child: CachedNetworkImage(
+                      imageUrl: article.imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      placeholder:
+                          (context, url) => Container(
+                            color: Theme.of(context).colorScheme.surfaceVariant,
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
+                      errorWidget:
+                          (context, url, error) => Container(
+                            color: Theme.of(context).colorScheme.surfaceVariant,
+                            child: Center(child: Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error)),
+                          ),
                     ),
                   ),
-                  // Gradient overlay
+                  // Gradient overlay - use the same borderRadius as the image
                   Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.all(Radius.circular(16)),

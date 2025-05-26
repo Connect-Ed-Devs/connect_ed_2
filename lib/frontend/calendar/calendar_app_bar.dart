@@ -287,14 +287,27 @@ class _CalendarWidget extends StatelessWidget {
           textColor = theme.colorScheme.onSurface;
         }
 
-        return InkWell(
-          onTap: () => onDateSelected(dayDate),
-          customBorder: const CircleBorder(),
-          child: Container(
-            alignment: Alignment.center,
-            margin: const EdgeInsets.all(4.0), // Add some margin for the circle to look nice
-            decoration: cellDecoration,
-            child: Text('$day', style: TextStyle(color: textColor, fontWeight: fontWeight)),
+        // Using a full-sized Material widget with InkResponse for better tap behavior
+        return Material(
+          color: Colors.transparent,
+          child: InkResponse(
+            containedInkWell: true,
+            highlightShape: BoxShape.rectangle, // Makes the entire area highlight on tap
+            onTap: () => onDateSelected(dayDate),
+            child: Center(
+              child: Container(
+                width: 36, // Size of the visible circle
+                height: 36,
+                decoration: cellDecoration,
+                child: Center(
+                  child: Text(
+                    '$day',
+                    style: TextStyle(color: textColor, fontWeight: fontWeight),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
           ),
         );
       },
