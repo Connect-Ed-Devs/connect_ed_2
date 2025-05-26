@@ -433,22 +433,40 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           // Force refresh data and wait for completion
           setState(() {
             _isLoading = true;
+            _isLoadingMenu = true; // Also set menu loading state
             _errorMessage = null;
             _hasDataLoadError = false;
+            _hasMenuLoadError = false; // Reset menu error state
           });
 
           try {
-            final newData = await calendarManager.fetchData();
+            // Create both fetches in parallel
+            final calendarFuture = calendarManager.fetchData();
+            final menuFuture = menuManager.fetchData(); // Add menu data refresh
+
+            // Wait for both to complete
+            final results = await Future.wait([calendarFuture, menuFuture]);
+
+            // Process results
+            final newCalendarData = results[0] as Map<DateTime, CalendarItem>;
+            // Menu data is handled automatically by the cache manager
+
             setState(() {
-              _calendarData = newData;
-              _nextScheduleItem = _getNextScheduleItem(newData);
+              _calendarData = newCalendarData;
+              _nextScheduleItem = _getNextScheduleItem(newCalendarData);
               _isLoading = false;
+              _isLoadingMenu = false; // Update menu loading state
               _errorMessage = null;
               _hasDataLoadError = false;
+              _hasMenuLoadError = false;
             });
+
+            // Also refresh games data
+            _loadGamesData();
           } catch (error) {
             setState(() {
               _isLoading = false;
+              _isLoadingMenu = false; // Update menu loading state
               _errorMessage = _parseErrorMessage(error.toString());
               _hasDataLoadError = true;
             });
@@ -459,7 +477,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                 action: SnackBarAction(
                   label: 'Retry',
                   textColor: Theme.of(context).colorScheme.onError,
-                  onPressed: _loadCalendarData,
+                  onPressed: () {
+                    _loadCalendarData();
+                    _loadGamesData();
+                    // Also retry menu data
+                    try {
+                      menuManager.fetchData();
+                    } catch (e) {
+                      print('Error refreshing menu data: $e');
+                    }
+                  },
                 ),
               ),
             );
@@ -680,14 +707,22 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                   _nextScheduleItem!
                                                       .formatTime(_nextScheduleItem!.startTime)
                                                       .split(" ")[0],
-                                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 16,
+                                                  ),
                                                 ),
                                                 Text("|", style: TextStyle(color: Colors.white)),
                                                 Text(
                                                   _nextScheduleItem!
                                                       .formatTime(_nextScheduleItem!.endTime)
                                                       .split(" ")[0],
-                                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 16,
+                                                  ),
                                                 ),
                                               ],
                                             ),

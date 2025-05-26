@@ -9,7 +9,7 @@ CacheManager gamesManager = GamesCacheManager();
 class GamesCacheManager extends CacheManager {
   GamesCacheManager({
     String cacheKey = 'games_data',
-    Duration smallThreshold = const Duration(hours: 2),
+    Duration smallThreshold = const Duration(minutes: 10),
     Duration largeThreshold = const Duration(days: 1),
   }) : super(cacheKey: cacheKey, smallThreshold: smallThreshold, largeThreshold: largeThreshold);
 

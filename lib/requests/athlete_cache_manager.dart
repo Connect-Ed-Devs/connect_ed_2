@@ -9,7 +9,7 @@ CacheManager athleteManager = AthleteArticleCacheManager();
 class AthleteArticleCacheManager extends CacheManager {
   AthleteArticleCacheManager({
     String cacheKey = 'athlete_data',
-    Duration smallThreshold = const Duration(hours: 12),
+    Duration smallThreshold = const Duration(minutes: 5),
     Duration largeThreshold = const Duration(days: 2),
   }) : super(cacheKey: cacheKey, smallThreshold: smallThreshold, largeThreshold: largeThreshold);
 

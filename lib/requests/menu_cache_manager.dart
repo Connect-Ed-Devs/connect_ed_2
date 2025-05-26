@@ -8,7 +8,7 @@ CacheManager menuManager = MenuCacheManager();
 class MenuCacheManager extends CacheManager {
   MenuCacheManager({
     String cacheKey = 'menu_data',
-    Duration smallThreshold = const Duration(hours: 12),
+    Duration smallThreshold = const Duration(minutes: 5),
     Duration largeThreshold = const Duration(days: 7),
   }) : super(cacheKey: cacheKey, smallThreshold: smallThreshold, largeThreshold: largeThreshold);
 
