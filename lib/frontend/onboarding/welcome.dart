@@ -1,3 +1,5 @@
+import 'package:connect_ed_2/frontend/components/button.dart';
+import 'package:connect_ed_2/frontend/components/text.dart';
 import 'package:connect_ed_2/frontend/onboarding/link.dart';
 import 'package:flutter/material.dart';
 
@@ -8,18 +10,21 @@ class WelcomePage extends StatefulWidget {
   State<WelcomePage> createState() => _WelcomePageState();
 }
 
-class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStateMixin {
+class _WelcomePageState extends State<WelcomePage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _gradientAnimation;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(duration: const Duration(seconds: 4), vsync: this);
-    _gradientAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.linear));
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 4),
+      vsync: this,
+    );
+    _gradientAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.linear),
+    );
     _animationController.repeat();
   }
 
@@ -92,7 +97,8 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
                 }
 
                 // Check if we're in light mode or dark mode
-                final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+                final isDarkMode =
+                    Theme.of(context).brightness == Brightness.dark;
 
                 // Select appropriate gradient colors based on theme mode
                 final List<Color> gradientColors = [
@@ -112,7 +118,7 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
                       bottomRight: Radius.circular(16.0),
                     ),
                   ),
-                  child: Container(
+                  child: SizedBox(
                     width: 128,
                     height: 128,
                     child: Center(
@@ -149,40 +155,64 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    "Sports, academics, and more, all in one place.",
-                    style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurface.withOpacity(0.7), height: 1.5),
-                    textAlign: TextAlign.center,
+                  TypewriterText(
+                    texts: [
+                      'Sports, academics, and more, all in one place',
+                      'View your schedule, assessments, and more',
+                      'View events and articles',
+                      'Connect with your peers and teachers',
+                    ],
+                    textStyle: TextStyle(
+                      fontSize: 16,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      height: 1.5,
+                    ),
                   ),
                   Spacer(),
-
                   // Continue button with opacity feedback
+                  // SizedBox(
+                  //   width: double.infinity,
+                  //   height: 56,
+                  //   child: OpacityButton(
+                  //     onPressed: () {
+                  //       // Navigate to link setup page
+                  //       Navigator.of(context).pushReplacement(
+                  //         MaterialPageRoute(
+                  //           builder: (context) => const LinkPage(),
+                  //         ),
+                  //       );
+                  //     },
+                  //     child: Container(
+                  //       decoration: BoxDecoration(
+                  //         color: theme.colorScheme.primary,
+                  //         borderRadius: BorderRadius.circular(16),
+                  //       ),
+                  //       child: Center(
+                  //         child: Text(
+                  //           "Get Started",
+                  //           style: TextStyle(
+                  //             fontSize: 18,
+                  //             fontWeight: FontWeight.w600,
+                  //             color: theme.colorScheme.onPrimary,
+                  //           ),
+                  //         ),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
                   SizedBox(
                     width: double.infinity,
                     height: 56,
-                    child: _OpacityButton(
+                    child: AestheticButton(
+                      text: "Get Started",
                       onPressed: () {
-                        // Navigate to link setup page
-                        Navigator.of(
+                        Navigator.push(
                           context,
-                        ).pushReplacement(MaterialPageRoute(builder: (context) => const LinkPage()));
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Center(
-                          child: Text(
-                            "Get Started",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onPrimary,
-                            ),
+                          MaterialPageRoute(
+                            builder: (context) => const LinkPage(),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -190,36 +220,6 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// Custom opacity button widget
-class _OpacityButton extends StatefulWidget {
-  final VoidCallback? onPressed;
-  final Widget child;
-
-  const _OpacityButton({required this.onPressed, required this.child});
-
-  @override
-  State<_OpacityButton> createState() => _OpacityButtonState();
-}
-
-class _OpacityButtonState extends State<_OpacityButton> {
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) => setState(() => _isPressed = false),
-      onTapCancel: () => setState(() => _isPressed = false),
-      onTap: widget.onPressed,
-      child: AnimatedOpacity(
-        opacity: _isPressed ? 0.6 : 1.0,
-        duration: const Duration(milliseconds: 100),
-        child: widget.child,
       ),
     );
   }

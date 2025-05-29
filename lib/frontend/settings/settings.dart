@@ -1,10 +1,7 @@
-import 'package:connect_ed_2/frontend/setup/app_bar.dart';
-import 'package:connect_ed_2/frontend/setup/opacity_button.dart'; // Import OpacityTextButton
-import 'package:connect_ed_2/requests/url_check.dart'; // Import checkLink
+import 'package:connect_ed_2/main.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:connect_ed_2/main.dart'; // For accessing the global 'prefs'
-import 'package:url_launcher/url_launcher.dart'; // Import url_launcher
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -30,34 +27,49 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  Future<bool> checkLink(String link) async {
+    // Placeholder for link checking logic
+    // Replace with actual implementation from url_check.dart
+    await Future.delayed(const Duration(seconds: 1)); // Simulate network call
+    return link.contains('calendar.ics');
+  }
+
   Future<void> _saveCalendarLink() async {
     final newLink = _calendarLinkController.text;
-    // Button should be disabled if newLink is empty, but this is a safeguard.
     if (newLink.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Calendar link cannot be empty.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Calendar link cannot be empty.')),
+      );
       return;
     }
 
-    // Show "Checking link..." dialog
-    // Use a different context for the dialog to ensure it can be popped correctly.
     showDialog(
       context: context,
-      barrierDismissible: false, // User cannot dismiss by tapping outside
+      barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          alignment: Alignment.center,
-          content: SizedBox(
-            height: 64,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min, // Ensure the Row takes minimum horizontal space
-              children: const [
-                SizedBox(height: 24, width: 24, child: CircularProgressIndicator()),
-                SizedBox(width: 20),
-                Text("Checking link...", style: TextStyle(fontSize: 16)),
-              ],
-            ),
+          contentPadding: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          content: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(),
+              ),
+              SizedBox(width: 16),
+              Text(
+                'Checking link...',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontFamily: 'Montserrat',
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -66,29 +78,36 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       bool isValid = await checkLink(newLink);
       if (mounted) {
-        // Check if the widget is still in the tree
-        Navigator.of(context).pop(); // Dismiss the "Checking link..." dialog
+        Navigator.of(context).pop();
       }
 
       if (isValid) {
         await prefs.setString('calendar_link', newLink);
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Calendar link verified and saved successfully.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Calendar link verified and saved successfully.'),
+            ),
+          );
         }
-        _calendarLinkController.clear(); // Clear field on success, which will also update button state
+        _calendarLinkController.clear();
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Invalid calendar link. Please check the URL and try again.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Invalid calendar link. Please check the URL and try again.',
+              ),
+            ),
+          );
         }
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop(); // Ensure dialog is dismissed on error too
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('An error occurred: ${e.toString()}')));
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('An error occurred: ${e.toString()}')),
+        );
       }
     }
   }
@@ -97,7 +116,9 @@ class _SettingsPageState extends State<SettingsPage> {
     final Uri url = Uri.parse(urlString);
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not launch $urlString')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not launch $urlString')));
       }
     }
   }
@@ -112,102 +133,279 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: CustomScrollView(
-        slivers: <Widget>[
-          CEAppBar(title: 'Settings', showBackButton: true, onBackPressed: () => Navigator.of(context).pop()),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Calendar Settings', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
-                  Text(
-                    'Update the iCalendar (iCal) link used for fetching your schedule and assessments.',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.white),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center, // Align items vertically
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _calendarLinkController,
-                          decoration: const InputDecoration(
-                            labelText: 'Calendar Link (iCal URL)',
-                            hintText: 'https://example.com/path/to/calendar.ics',
-                            hintStyle: TextStyle(color: Colors.grey),
-                            border: OutlineInputBorder(),
+        slivers: [
+          // Custom AppBar (assuming CEAppBar is defined)
+          SliverAppBar(
+            pinned: true,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            title: const Text(
+              'Settings',
+              style: TextStyle(
+                fontSize: 28,
+                fontFamily: 'Montserrat',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          // Main Content with Consolidated Padding
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                // Calendar Settings
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Calendar Settings',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Update the iCalendar (iCal) link used for fetching your schedule and assessments.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w400,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.8),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _calendarLinkController,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor:
+                                  Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainer,
+                              labelText: 'Calendar Link (iCal URL)',
+                              hintText:
+                                  'https://example.com/path/to/calendar.ics',
+                              hintStyle: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.5),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 1.5,
+                                ),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                            ),
+                            keyboardType: TextInputType.url,
+                            minLines: 1,
+                            maxLines: 1,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
-                          keyboardType: TextInputType.url,
-                          minLines: 1,
-                          maxLines: 1,
                         ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed:
+                              _isCalendarLinkEntered ? _saveCalendarLink : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                Theme.of(context).colorScheme.primary,
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onPrimary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 14,
+                            ),
+                            elevation: 2,
+                          ),
+                          child: const Text(
+                            'Save',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                // Feedback and Bug Reports
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Feedback and Bugs',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w600,
                       ),
-                      const SizedBox(width: 8), // Spacing between text field and button
-                      OpacityTextButton(
-                        text: "Save",
-                        onPressed: _isCalendarLinkEntered ? _saveCalendarLink : () {}, // Pass null when disabled
-                        color: _isCalendarLinkEntered ? Theme.of(context).colorScheme.primary : Colors.grey,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Help us improve Connect-Ed by sharing your thoughts or reporting any issues you encounter.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontFamily: 'Montserrat',
+                        fontWeight: FontWeight.w400,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.8),
                       ),
-                    ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            _launchURL('https://forms.office.com/r/0BqkWRaEL3');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                Theme.of(context).colorScheme.primary,
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onPrimary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 14,
+                            ),
+                            elevation: 2,
+                          ),
+                          child: const Text(
+                            'Feedback Form',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            _launchURL('https://forms.office.com/r/cn2xNd2M2V');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                Theme.of(context).colorScheme.primary,
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onPrimary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 14,
+                            ),
+                            elevation: 2,
+                          ),
+                          child: const Text(
+                            'Bug Report',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontFamily: 'Montserrat',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 48),
+                // Made by Section
+                AnimatedOpacity(
+                  opacity: 1.0,
+                  duration: const Duration(milliseconds: 500),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Made by',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontFamily: 'Montserrat',
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Abdur-Rahman Rana ’25,\nDemilade Olawumni ’25,\nJames Tan ’26',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontFamily: 'Montserrat',
+                            fontWeight: FontWeight.w500,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withOpacity(0.8),
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 64), // Increased spacing before next section
-                  // Feedback and Bug Reports Section
-                  Text('Feedback and Bugs', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Help us improve Connect-Ed by sharing your thoughts or reporting any issues you encounter.',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.white.withOpacity(0.8)),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      OpacityTextButton(
-                        text: "Feedback Form",
-                        onPressed: () {
-                          // Replace with your actual feedback form URL
-                          _launchURL('https://forms.office.com/r/0BqkWRaEL3');
-                        },
-                        color: Theme.of(context).colorScheme.primary, // Style as a link
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      Spacer(), // Spacing between buttons
-                      OpacityTextButton(
-                        text: "Bug Report",
-                        onPressed: () {
-                          // Replace with your actual bug report form URL
-                          _launchURL('https://forms.office.com/r/cn2xNd2M2V');
-                        },
-                        color: Theme.of(context).colorScheme.primary, // Style as a link
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  const SizedBox(height: 24), // Spacing at the end
-                  // Text('Other settings content will go here.', style: Theme.of(context).textTheme.titleMedium),
-                ],
-              ),
+                ),
+              ]),
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 64)), // Add some space before the footer
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                "Made by Abdur-Rahman Rana '25\n and Demilade Olawumni '25",
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
+          // Bottom Padding
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
       ),
     );
