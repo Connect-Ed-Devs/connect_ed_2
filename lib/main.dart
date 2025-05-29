@@ -30,9 +30,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Connect-Ed',
       theme: ThemeData(
-        colorScheme: MediaQuery.of(context).platformBrightness == Brightness.dark ? darkScheme : lightScheme,
+        colorScheme:
+            MediaQuery.of(context).platformBrightness == Brightness.dark
+                ? darkScheme
+                : lightScheme,
         fontFamily: 'Montserrat',
         useMaterial3: true,
       ),
