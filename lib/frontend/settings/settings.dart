@@ -1,6 +1,5 @@
 import 'package:connect_ed_2/main.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -180,7 +179,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         fontWeight: FontWeight.w400,
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withOpacity(0.8),
+                        ).colorScheme.onSurface.withValues(alpha: 0.8),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -202,7 +201,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               hintStyle: TextStyle(
                                 color: Theme.of(
                                   context,
-                                ).colorScheme.onSurface.withOpacity(0.5),
+                                ).colorScheme.onSurface.withValues(alpha: 0.5),
                               ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -287,7 +286,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         fontWeight: FontWeight.w400,
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withOpacity(0.8),
+                        ).colorScheme.onSurface.withValues(alpha: 0.8),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -365,7 +364,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -392,7 +391,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             fontWeight: FontWeight.w500,
                             color: Theme.of(
                               context,
-                            ).colorScheme.onSurface.withOpacity(0.8),
+                            ).colorScheme.onSurface.withValues(alpha: 0.8),
                             height: 1.5,
                           ),
                           textAlign: TextAlign.center,
@@ -404,7 +403,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ]),
             ),
           ),
-          // Bottom Padding
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
       ),

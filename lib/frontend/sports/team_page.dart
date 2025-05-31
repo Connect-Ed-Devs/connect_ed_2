@@ -17,10 +17,17 @@ class _SegmentedButtonHeaderDelegate extends SliverPersistentHeaderDelegate {
   final CustomSegmentedButton<TeamInfoSegment> segmentedButton;
   final double height;
 
-  _SegmentedButtonHeaderDelegate({required this.segmentedButton, required this.height});
+  _SegmentedButtonHeaderDelegate({
+    required this.segmentedButton,
+    required this.height,
+  });
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor, // Match page background
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -36,7 +43,8 @@ class _SegmentedButtonHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _SegmentedButtonHeaderDelegate oldDelegate) {
-    return segmentedButton != oldDelegate.segmentedButton || height != oldDelegate.height;
+    return segmentedButton != oldDelegate.segmentedButton ||
+        height != oldDelegate.height;
   }
 }
 
@@ -94,9 +102,7 @@ class _TeamPageState extends State<TeamPage> {
       }
 
       // If no cached data, fetch fresh
-      if (cachedGames == null) {
-        cachedGames = await gamesManager.fetchData();
-      }
+      cachedGames ??= await gamesManager.fetchData();
 
       // Process games data - filter for the specific league if provided, otherwise filter by team name
       if (cachedGames != null) {
@@ -105,12 +111,19 @@ class _TeamPageState extends State<TeamPage> {
 
         if (_leagueCode != null) {
           // If league code is provided, filter by league code
-          allTeamGames = cachedGames.values.where((game) => game.leagueCode == _leagueCode).toList();
+          allTeamGames =
+              cachedGames.values
+                  .where((game) => game.leagueCode == _leagueCode)
+                  .toList();
         } else {
           // If no league code, filter by team name
           allTeamGames =
               cachedGames.values
-                  .where((game) => game.homeTeam == widget.team.name || game.awayTeam == widget.team.name)
+                  .where(
+                    (game) =>
+                        game.homeTeam == widget.team.name ||
+                        game.awayTeam == widget.team.name,
+                  )
                   .toList();
         }
 
@@ -120,12 +133,15 @@ class _TeamPageState extends State<TeamPage> {
         // Split into upcoming and played games
         List<Game> upcoming =
             allTeamGames.where((game) {
-              return game.date.isAfter(now) || (game.homeScore == '-' && game.awayScore == '-');
+              return game.date.isAfter(now) ||
+                  (game.homeScore == '-' && game.awayScore == '-');
             }).toList();
 
         List<Game> played =
             allTeamGames.where((game) {
-              return game.date.isBefore(now) && game.homeScore != '-' && game.awayScore != '-';
+              return game.date.isBefore(now) &&
+                  game.homeScore != '-' &&
+                  game.awayScore != '-';
             }).toList();
 
         // Sort played games by date descending (most recent first)
@@ -257,7 +273,9 @@ class _TeamPageState extends State<TeamPage> {
       if (cachedStandings == null) {
         print('Fetching fresh standings data from network');
         cachedStandings = await standingsManager.fetchData();
-        print('Fresh standings data fetched: ${cachedStandings?.length} league(s)');
+        print(
+          'Fresh standings data fetched: ${cachedStandings?.length} league(s)',
+        );
         print('Available leagues: ${cachedStandings?.keys.join(', ')}');
       }
 
@@ -270,7 +288,9 @@ class _TeamPageState extends State<TeamPage> {
 
         final standingsList = cachedStandings[leagueCode];
         if (standingsList != null) {
-          print('StandingsList for $leagueCode contains ${standingsList.standings.length} team(s)');
+          print(
+            'StandingsList for $leagueCode contains ${standingsList.standings.length} team(s)',
+          );
 
           setState(() {
             _standingsData = standingsList.standings;
@@ -286,7 +306,9 @@ class _TeamPageState extends State<TeamPage> {
         }
       } else {
         print('ERROR: League code $leagueCode not found in standings data');
-        print('Available leagues: ${cachedStandings?.keys.join(', ') ?? 'none'}');
+        print(
+          'Available leagues: ${cachedStandings?.keys.join(', ') ?? 'none'}',
+        );
 
         setState(() {
           _isLoadingStandings = false;
@@ -304,9 +326,18 @@ class _TeamPageState extends State<TeamPage> {
   }
 
   // Helper method to build loading/error/empty state
-  Widget _buildLoadingOrErrorState(bool isLoading, bool hasError, String emptyMessage) {
+  Widget _buildLoadingOrErrorState(
+    bool isLoading,
+    bool hasError,
+    String emptyMessage,
+  ) {
     if (isLoading) {
-      return SliverToBoxAdapter(child: Container(height: 200, child: Center(child: CircularProgressIndicator())));
+      return SliverToBoxAdapter(
+        child: SizedBox(
+          height: 200,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
     }
 
     if (hasError) {
@@ -318,10 +349,14 @@ class _TeamPageState extends State<TeamPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 36),
+                Icon(
+                  Icons.error_outline,
+                  color: Theme.of(context).colorScheme.error,
+                  size: 36,
+                ),
                 SizedBox(height: 8),
                 Text(
-                  "Failed to load data",
+                  'Failed to load data',
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                   textAlign: TextAlign.center,
                 ),
@@ -342,7 +377,9 @@ class _TeamPageState extends State<TeamPage> {
             style: TextStyle(
               fontSize: 16,
               fontStyle: FontStyle.italic,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ),
@@ -355,15 +392,19 @@ class _TeamPageState extends State<TeamPage> {
     switch (segment) {
       case TeamInfoSegment.upcoming:
         if (_isLoadingGames) {
-          return _buildLoadingOrErrorState(true, false, "");
+          return _buildLoadingOrErrorState(true, false, '');
         }
 
         if (_hasGamesError) {
-          return _buildLoadingOrErrorState(false, true, "");
+          return _buildLoadingOrErrorState(false, true, '');
         }
 
         if (_upcomingGames.isEmpty) {
-          return _buildLoadingOrErrorState(false, false, "No upcoming games for this team");
+          return _buildLoadingOrErrorState(
+            false,
+            false,
+            'No upcoming games for this team',
+          );
         }
 
         return SliverPadding(
@@ -384,15 +425,19 @@ class _TeamPageState extends State<TeamPage> {
 
       case TeamInfoSegment.scores:
         if (_isLoadingGames) {
-          return _buildLoadingOrErrorState(true, false, "");
+          return _buildLoadingOrErrorState(true, false, '');
         }
 
         if (_hasGamesError) {
-          return _buildLoadingOrErrorState(false, true, "");
+          return _buildLoadingOrErrorState(false, true, '');
         }
 
         if (_playedGames.isEmpty) {
-          return _buildLoadingOrErrorState(false, false, "No completed games for this team");
+          return _buildLoadingOrErrorState(
+            false,
+            false,
+            'No completed games for this team',
+          );
         }
 
         return SliverPadding(
@@ -413,20 +458,29 @@ class _TeamPageState extends State<TeamPage> {
 
       case TeamInfoSegment.standings:
         if (_isLoadingStandings) {
-          return _buildLoadingOrErrorState(true, false, "");
+          return _buildLoadingOrErrorState(true, false, '');
         }
 
         if (_hasStandingsError) {
-          return _buildLoadingOrErrorState(false, true, "");
+          return _buildLoadingOrErrorState(false, true, '');
         }
 
         if (_standingsData.isEmpty) {
-          return _buildLoadingOrErrorState(false, false, "No standings data available");
+          return _buildLoadingOrErrorState(
+            false,
+            false,
+            'No standings data available',
+          );
         }
 
         return SliverPadding(
           padding: const EdgeInsets.all(16.0),
-          sliver: SliverToBoxAdapter(child: StandingsTable(standings: _standingsData, homeTeamName: widget.team.name)),
+          sliver: SliverToBoxAdapter(
+            child: StandingsTable(
+              standings: _standingsData,
+              homeTeamName: widget.team.name,
+            ),
+          ),
         );
 
       case TeamInfoSegment.roster:
@@ -434,7 +488,7 @@ class _TeamPageState extends State<TeamPage> {
         return SliverPadding(
           padding: const EdgeInsets.all(16.0),
           sliver: SliverToBoxAdapter(
-            child: Container(
+            child: SizedBox(
               height: 200,
               child: Center(
                 child: Text(
@@ -442,7 +496,9 @@ class _TeamPageState extends State<TeamPage> {
                   style: TextStyle(
                     fontSize: 16,
                     fontStyle: FontStyle.italic,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
               ),
@@ -454,19 +510,20 @@ class _TeamPageState extends State<TeamPage> {
 
   @override
   Widget build(BuildContext context) {
-    final String displayRecord = "#${widget.team.rank}\n${widget.team.record}";
+    final String displayRecord = '#${widget.team.rank}\n${widget.team.record}';
     final theme = Theme.of(context);
 
     // Calculate the height of the segmented button for the delegate
     // This is an estimate; actual height might depend on text style and padding.
     // A more robust way would be to measure it or use a fixed known height.
-    const double segmentedButtonHeight = kMinInteractiveDimension; // Approx 48.0
+    const double segmentedButtonHeight =
+        kMinInteractiveDimension; // Approx 48.0
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           CEAppBar(
-            title: "Team Info", // Or dynamically set based on team if needed
+            title: 'Team Info', // Or dynamically set based on team if needed
             showBackButton: true,
           ),
           SliverToBoxAdapter(
@@ -475,7 +532,10 @@ class _TeamPageState extends State<TeamPage> {
               child: Container(
                 padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.tertiary, // Or theme.colorScheme.tertiary
+                  color:
+                      Theme.of(
+                        context,
+                      ).colorScheme.tertiary, // Or theme.colorScheme.tertiary
                   borderRadius: BorderRadius.circular(16.0),
                 ),
                 child: Column(
@@ -487,12 +547,21 @@ class _TeamPageState extends State<TeamPage> {
                         Expanded(
                           child: Text(
                             widget.team.name,
-                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w500,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Icon(widget.team.sportIcon, size: 36, color: theme.colorScheme.onSurfaceVariant),
+                        Icon(
+                          widget.team.sportIcon,
+                          size: 36,
+                          color: theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.7,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -502,18 +571,20 @@ class _TeamPageState extends State<TeamPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Rank",
+                              'Rank',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                                color: theme.colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.7),
                               ),
                             ),
                             Text(
-                              "#${widget.team.rank}",
+                              '#${widget.team.rank}',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
-                                color: theme.colorScheme.onSurfaceVariant,
+                                color: theme.colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.7),
                               ),
                             ),
                           ],
@@ -523,10 +594,11 @@ class _TeamPageState extends State<TeamPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Record",
+                              'Record',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                                color: theme.colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.7),
                               ),
                             ),
                             Text(
@@ -534,7 +606,8 @@ class _TeamPageState extends State<TeamPage> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
-                                color: theme.colorScheme.onSurfaceVariant,
+                                color: theme.colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.7),
                               ),
                             ),
                           ],
@@ -552,9 +625,18 @@ class _TeamPageState extends State<TeamPage> {
               height: segmentedButtonHeight, // Adjust as needed
               segmentedButton: CustomSegmentedButton<TeamInfoSegment>(
                 segments: const [
-                  ButtonSegment(value: TeamInfoSegment.upcoming, label: Text('Upcoming')),
-                  ButtonSegment(value: TeamInfoSegment.scores, label: Text('Scores')),
-                  ButtonSegment(value: TeamInfoSegment.standings, label: Text('Standings')),
+                  ButtonSegment(
+                    value: TeamInfoSegment.upcoming,
+                    label: Text('Upcoming'),
+                  ),
+                  ButtonSegment(
+                    value: TeamInfoSegment.scores,
+                    label: Text('Scores'),
+                  ),
+                  ButtonSegment(
+                    value: TeamInfoSegment.standings,
+                    label: Text('Standings'),
+                  ),
                 ],
                 selected: {_selectedSegment},
                 onSelectionChanged: (Set<TeamInfoSegment> newSelection) {

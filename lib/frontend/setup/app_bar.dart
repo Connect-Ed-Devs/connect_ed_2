@@ -9,13 +9,13 @@ class CEAppBar extends StatelessWidget {
   final Widget? trailingAction;
 
   const CEAppBar({
-    Key? key,
+    super.key,
     required this.title,
     this.collapsedTitle,
     this.showBackButton = false,
     this.onBackPressed,
     this.trailingAction,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +38,9 @@ class CEAppBar extends StatelessWidget {
           double height = constraints.maxHeight;
 
           // Get the collapsed height (toolbar height + status bar)
-          final double collapsedHeight = MediaQuery.of(context).padding.top + 35; // Use toolbarHeight value
+          final double collapsedHeight =
+              MediaQuery.of(context).padding.top +
+              35; // Use toolbarHeight value
 
           // Calculate progress as percentage between expanded and collapsed
           if (height > collapsedHeight) {
@@ -78,20 +80,31 @@ class CEAppBar extends StatelessWidget {
                                 opacity: largeTitleOpacity,
                                 child: IconButton(
                                   icon: const Icon(Icons.arrow_back_ios),
-                                  onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
+                                  onPressed:
+                                      onBackPressed ??
+                                      () => Navigator.of(context).pop(),
                                   iconSize: 36,
                                 ),
                               ),
                             Expanded(
                               child: Opacity(
                                 opacity: largeTitleOpacity,
-                                child: Text(title, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w600)),
+                                child: Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Opacity(opacity: largeTitleOpacity, child: trailingAction ?? const SizedBox.shrink()),
+                      Opacity(
+                        opacity: largeTitleOpacity,
+                        child: trailingAction ?? const SizedBox.shrink(),
+                      ),
                     ],
                   ),
                 ),
@@ -113,8 +126,13 @@ class CEAppBar extends StatelessWidget {
                           child:
                               showBackButton
                                   ? IconButton(
-                                    icon: const Icon(Icons.arrow_back_ios, size: 18),
-                                    onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
+                                    icon: const Icon(
+                                      Icons.arrow_back_ios,
+                                      size: 18,
+                                    ),
+                                    onPressed:
+                                        onBackPressed ??
+                                        () => Navigator.of(context).pop(),
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
                                     visualDensity: VisualDensity.compact,
@@ -126,11 +144,14 @@ class CEAppBar extends StatelessWidget {
                           fit: FlexFit.tight,
                           child: Text(
                             smallTitle,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        Flexible(child: SizedBox.shrink(), fit: FlexFit.tight),
+                        Flexible(fit: FlexFit.tight, child: SizedBox.shrink()),
                       ],
                     ),
                   ),

@@ -12,10 +12,10 @@ CacheManager calendarManager = CalendarManager();
 
 class CalendarManager extends CacheManager {
   CalendarManager({
-    String cacheKey = 'calendar_data',
-    Duration smallThreshold = const Duration(minutes: 30),
-    Duration largeThreshold = const Duration(days: 2),
-  }) : super(cacheKey: cacheKey, smallThreshold: smallThreshold, largeThreshold: largeThreshold);
+    super.cacheKey = 'calendar_data',
+    super.smallThreshold = const Duration(minutes: 30),
+    super.largeThreshold = const Duration(days: 2),
+  });
 
   @override
   String encodeData(dynamic data) {
@@ -58,7 +58,10 @@ class CalendarManager extends CacheManager {
               .toList();
 
       // Store in map
-      encodedMap[dateKey] = {'schedule': scheduleList, 'assessments': assessmentList};
+      encodedMap[dateKey] = {
+        'schedule': scheduleList,
+        'assessments': assessmentList,
+      };
     });
 
     return jsonEncode(encodedMap);
@@ -81,8 +84,14 @@ class CalendarManager extends CacheManager {
         schedule.add(
           ScheduleItem(
             title: scheduleData['title'],
-            startTime: TimeOfDay(hour: scheduleData['startTimeHour'], minute: scheduleData['startTimeMinute']),
-            endTime: TimeOfDay(hour: scheduleData['endTimeHour'], minute: scheduleData['endTimeMinute']),
+            startTime: TimeOfDay(
+              hour: scheduleData['startTimeHour'],
+              minute: scheduleData['startTimeMinute'],
+            ),
+            endTime: TimeOfDay(
+              hour: scheduleData['endTimeHour'],
+              minute: scheduleData['endTimeMinute'],
+            ),
             location: scheduleData['location'],
             instructor: scheduleData['instructor'],
           ),
@@ -102,7 +111,10 @@ class CalendarManager extends CacheManager {
       }
 
       // Create CalendarItem and add to map
-      calendarData[date] = CalendarItem(schedule: schedule, assessments: assessments);
+      calendarData[date] = CalendarItem(
+        schedule: schedule,
+        assessments: assessments,
+      );
     });
 
     return calendarData;
@@ -118,20 +130,25 @@ class CalendarManager extends CacheManager {
     String calendarLink = prefs.getString('link') ?? '';
 
     final response = await http.get(Uri.parse(calendarLink));
-    if (response.statusCode != 200) throw Exception('Failed to load calendar data');
+    if (response.statusCode != 200)
+      throw Exception('Failed to load calendar data');
 
-    final iCalendar = ICalendar.fromLines(response.body.split("\n"));
-    var items = iCalendar.toJson()["data"];
+    final iCalendar = ICalendar.fromLines(response.body.split('\n'));
+    var items = iCalendar.toJson()['data'];
 
     Map<DateTime, CalendarItem> calendarData = {};
 
     for (final item in items) {
-      if (item["dtstart"] != null && item["dtend"] != null) {
-        if (item["dtstart"]["dt"].length > 9) {
-          DateTime startDate = DateTime.parse(item["dtstart"]["dt"]);
-          DateTime endDate = DateTime.parse(item["dtend"]["dt"]);
-          DateTime date = DateTime(startDate.year, startDate.month, startDate.day);
-          String courseName = getCourseName(item["summary"]);
+      if (item['dtstart'] != null && item['dtend'] != null) {
+        if (item['dtstart']['dt'].length > 9) {
+          DateTime startDate = DateTime.parse(item['dtstart']['dt']);
+          DateTime endDate = DateTime.parse(item['dtend']['dt']);
+          DateTime date = DateTime(
+            startDate.year,
+            startDate.month,
+            startDate.day,
+          );
+          String courseName = getCourseName(item['summary']);
 
           ScheduleItem scheduleItem = ScheduleItem(
             title: courseName,
@@ -140,22 +157,36 @@ class CalendarManager extends CacheManager {
           );
 
           if (calendarData[date] == null) {
-            calendarData[date] = CalendarItem(schedule: [scheduleItem], assessments: []);
+            calendarData[date] = CalendarItem(
+              schedule: [scheduleItem],
+              assessments: [],
+            );
           } else {
             calendarData[date]!.schedule.add(scheduleItem);
           }
-        } else if (item["dtstart"]["dt"].length == 8) {
-          DateTime startDate = DateTime.parse(item["dtstart"]["dt"]);
-          var descriptionList = item["summary"].split(": ");
-          String assignmentName = descriptionList[descriptionList.length - 1] ?? '';
-          String _className = getCourseName(
-            item["summary"].substring(0, item["summary"].length - assignmentName.length),
+        } else if (item['dtstart']['dt'].length == 8) {
+          DateTime startDate = DateTime.parse(item['dtstart']['dt']);
+          var descriptionList = item['summary'].split(': ');
+          String assignmentName =
+              descriptionList[descriptionList.length - 1] ?? '';
+          String className = getCourseName(
+            item['summary'].substring(
+              0,
+              item['summary'].length - assignmentName.length,
+            ),
           );
 
-          Assessment assessment = Assessment(title: assignmentName, className: _className, date: startDate);
+          Assessment assessment = Assessment(
+            title: assignmentName,
+            className: className,
+            date: startDate,
+          );
 
           if (calendarData[startDate] == null) {
-            calendarData[startDate] = CalendarItem(schedule: [], assessments: [assessment]);
+            calendarData[startDate] = CalendarItem(
+              schedule: [],
+              assessments: [assessment],
+            );
           } else {
             calendarData[startDate]!.assessments.add(assessment);
           }
@@ -171,18 +202,18 @@ String getCourseName(String name) {
   try {
     bool isAP = false;
     for (int i = 0; i < name.length - 1; i++) {
-      if (name.substring(i, i + 2) == "AP") {
+      if (name.substring(i, i + 2) == 'AP') {
         isAP = true;
       }
     }
 
-    List<String> courseNames = name.split("-");
+    List<String> courseNames = name.split('-');
     if (isAP) {
       return courseNames[1].substring(1, courseNames[1].length);
     } else {
-      return courseNames[0].substring(0, courseNames[0].length).split(",")[0];
+      return courseNames[0].substring(0, courseNames[0].length).split(',')[0];
     }
   } catch (e) {
-    return "";
+    return '';
   }
 }

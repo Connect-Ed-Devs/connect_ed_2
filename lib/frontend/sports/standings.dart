@@ -6,7 +6,12 @@ class StandingsTable extends StatelessWidget {
   final String? homeTeamName; // Team name to highlight as home
   final String? opposingTeamName; // Team name to highlight as opponent
 
-  const StandingsTable({Key? key, required this.standings, this.homeTeamName, this.opposingTeamName}) : super(key: key);
+  const StandingsTable({
+    super.key,
+    required this.standings,
+    this.homeTeamName,
+    this.opposingTeamName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -14,36 +19,41 @@ class StandingsTable extends StatelessWidget {
     final headerStyle = TextStyle(
       fontWeight: FontWeight.w500,
       fontSize: 14,
-      color: theme.colorScheme.onSurface.withOpacity(0.7),
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
     );
     final cellStyle = TextStyle(fontSize: 16, fontWeight: FontWeight.w500);
 
     // Sort standings by rank
-    final sortedStandings = List<StandingsItem>.from(standings)..sort((a, b) => a.rank.compareTo(b.rank));
+    final sortedStandings = List<StandingsItem>.from(standings)
+      ..sort((a, b) => a.rank.compareTo(b.rank));
 
     return Column(
       children: [
         Flex(
           direction: Axis.horizontal,
           children: [
-            Expanded(child: Container(), flex: 1),
+            Expanded(flex: 1, child: Container()),
             Expanded(
+              flex: 5,
               child: Text(
-                "Team",
+                'Team',
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withAlpha(127),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 127),
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              flex: 5,
             ),
             Expanded(
               child: Center(
                 child: Text(
-                  "W",
+                  'W',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withAlpha(127),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 127),
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -53,9 +63,11 @@ class StandingsTable extends StatelessWidget {
             Expanded(
               child: Center(
                 child: Text(
-                  "L",
+                  'L',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withAlpha(127),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 127),
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -65,9 +77,11 @@ class StandingsTable extends StatelessWidget {
             Expanded(
               child: Center(
                 child: Text(
-                  "T",
+                  'T',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withAlpha(127),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 127),
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -77,9 +91,11 @@ class StandingsTable extends StatelessWidget {
             Expanded(
               child: Center(
                 child: Text(
-                  "P",
+                  'P',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withAlpha(127),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 127),
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -98,13 +114,16 @@ class StandingsTable extends StatelessWidget {
                   direction: Axis.horizontal,
                   children: [
                     () {
-                      Color rowItemColor = theme.colorScheme.onSurface; // Default color
+                      Color rowItemColor =
+                          theme.colorScheme.onSurface; // Default color
                       if (item.teamName == homeTeamName) {
                         rowItemColor = theme.colorScheme.primary;
                       } else if (item.teamName == opposingTeamName) {
                         rowItemColor = theme.colorScheme.error;
                       }
-                      final TextStyle currentRowStyle = cellStyle.copyWith(color: rowItemColor);
+                      final TextStyle currentRowStyle = cellStyle.copyWith(
+                        color: rowItemColor,
+                      );
 
                       return Expanded(
                         flex: 1,
@@ -113,7 +132,7 @@ class StandingsTable extends StatelessWidget {
                           style: currentRowStyle.copyWith(
                             fontSize: 12,
                             // Ensure rank opacity is applied to the determined color
-                            color: rowItemColor.withOpacity(0.7),
+                            color: rowItemColor.withValues(alpha: 0.7),
                             fontWeight: FontWeight.w600,
                           ),
                           textAlign: TextAlign.center,
@@ -121,6 +140,7 @@ class StandingsTable extends StatelessWidget {
                       );
                     }(),
                     Expanded(
+                      flex: 5,
                       child: Text(
                         item.teamName,
                         style: cellStyle.copyWith(
@@ -129,12 +149,13 @@ class StandingsTable extends StatelessWidget {
                                   ? theme.colorScheme.primary
                                   : item.teamName == opposingTeamName
                                   ? theme.colorScheme.error
-                                  : theme.colorScheme.onSurface, // Default color
+                                  : theme
+                                      .colorScheme
+                                      .onSurface, // Default color
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      flex: 5,
                     ),
                     _buildStatCell(
                       item.wins.toString(),
@@ -183,7 +204,13 @@ class StandingsTable extends StatelessWidget {
                   ],
                 ),
               ),
-              Divider(color: Theme.of(context).colorScheme.onSurface.withAlpha(127), height: 0.5, thickness: 0.25),
+              Divider(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 127),
+                height: 0.5,
+                thickness: 0.25,
+              ),
             ],
           ),
         ],
@@ -194,10 +221,16 @@ class StandingsTable extends StatelessWidget {
   }
 
   Widget _buildHeaderCell(String text, TextStyle style) {
-    return Expanded(flex: 1, child: Text(text, style: style, textAlign: TextAlign.center));
+    return Expanded(
+      flex: 1,
+      child: Text(text, style: style, textAlign: TextAlign.center),
+    );
   }
 
   Widget _buildStatCell(String text, TextStyle style) {
-    return Expanded(flex: 1, child: Text(text, style: style, textAlign: TextAlign.center));
+    return Expanded(
+      flex: 1,
+      child: Text(text, style: style, textAlign: TextAlign.center),
+    );
   }
 }

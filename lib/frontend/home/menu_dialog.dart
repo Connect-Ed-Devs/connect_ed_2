@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 class MenuDialog extends StatefulWidget {
   final List<MenuSection> menuSections;
 
-  const MenuDialog({Key? key, required this.menuSections}) : super(key: key);
+  const MenuDialog({super.key, required this.menuSections});
 
   @override
-  _MenuDialogState createState() => _MenuDialogState();
+  MenuDialogState createState() => MenuDialogState();
 }
 
-class _MenuDialogState extends State<MenuDialog> {
+class MenuDialogState extends State<MenuDialog> {
   // Track expanded state for each section
   late Map<int, bool> _expandedSections;
 
@@ -38,7 +38,12 @@ class _MenuDialogState extends State<MenuDialog> {
     // Split by spaces, capitalize each word, rejoin
     return title
         .split(' ')
-        .map((word) => word.isNotEmpty ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}' : '')
+        .map(
+          (word) =>
+              word.isNotEmpty
+                  ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
+                  : '',
+        )
         .join(' ');
   }
 
@@ -56,8 +61,14 @@ class _MenuDialogState extends State<MenuDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Row(children: [Icon(Icons.flatware, size: 24), SizedBox(width: 8), Text("Today's Menu")]),
-      content: Container(
+      title: Row(
+        children: [
+          Icon(Icons.flatware, size: 24),
+          SizedBox(width: 8),
+          Text("Today's Menu"),
+        ],
+      ),
+      content: SizedBox(
         width: double.maxFinite,
         height: 400, // Fixed height for scrolling
         child: ListView.builder(
@@ -68,7 +79,9 @@ class _MenuDialogState extends State<MenuDialog> {
             if (menuSection.isEmpty) return SizedBox.shrink();
 
             final isExpanded = _expandedSections[index] ?? true;
-            final formattedTitle = _formatSectionTitle(menuSection.sectionTitle);
+            final formattedTitle = _formatSectionTitle(
+              menuSection.sectionTitle,
+            );
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,7 +91,10 @@ class _MenuDialogState extends State<MenuDialog> {
                   onTap: () => _toggleSection(index),
                   child: Container(
                     color: Theme.of(context).colorScheme.surface,
-                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8.0,
+                      horizontal: 8.0,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -105,24 +121,39 @@ class _MenuDialogState extends State<MenuDialog> {
                   child:
                       isExpanded
                           ? Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children:
                                   menuSection.courses.map((course) {
                                     return Padding(
-                                      padding: const EdgeInsets.only(bottom: 12.0, top: 8.0),
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12.0,
+                                        top: 8.0,
+                                      ),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            _formatSectionTitle(course[0]), // Capitalize course name
-                                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                            _formatSectionTitle(
+                                              course[0],
+                                            ), // Capitalize course name
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
                                           ),
                                           SizedBox(height: 2),
                                           Text(
-                                            _formatFoodItems(course[1]), // Process food items text
-                                            style: TextStyle(fontSize: 12), // 12px as requested
+                                            _formatFoodItems(
+                                              course[1],
+                                            ), // Process food items text
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                            ), // 12px as requested
                                           ),
                                         ],
                                       ),
@@ -132,13 +163,21 @@ class _MenuDialogState extends State<MenuDialog> {
                           )
                           : SizedBox.shrink(),
                 ),
-                Divider(height: 4, color: Theme.of(context).colorScheme.tertiary),
+                Divider(
+                  height: 4,
+                  color: Theme.of(context).colorScheme.tertiary,
+                ),
               ],
             );
           },
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text("CLOSE"))],
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('CLOSE'),
+        ),
+      ],
     );
   }
 }

@@ -72,9 +72,7 @@ class _SportsPageState extends State<SportsPage> {
       }
 
       // If no cached data, fetch fresh data
-      if (cachedData == null) {
-        cachedData = await athleteManager.fetchData();
-      }
+      cachedData ??= await athleteManager.fetchData();
 
       setState(() {
         _athleteArticles = cachedData?['articles'] ?? [];
@@ -107,9 +105,7 @@ class _SportsPageState extends State<SportsPage> {
       }
 
       // If no cached data, fetch fresh data
-      if (cachedGames == null) {
-        cachedGames = await gamesManager.fetchData();
-      }
+      cachedGames ??= await gamesManager.fetchData();
 
       // Process the games data
       setState(() {
@@ -144,9 +140,7 @@ class _SportsPageState extends State<SportsPage> {
       }
 
       // If no cached data, fetch fresh data
-      if (cachedStandings == null) {
-        cachedStandings = await standingsManager.fetchData();
-      }
+      cachedStandings ??= await standingsManager.fetchData();
 
       // Process the teams data
       setState(() {
@@ -171,22 +165,20 @@ class _SportsPageState extends State<SportsPage> {
     if (_standingsData != null) {
       _standingsData!.forEach((leagueCode, standingsList) {
         // Add team if it exists
-        if (standingsList.applebyTeam != null) {
-          // Use the sport name instead of school name
-          final sportName = standingsList.sportsName;
-          Team team = standingsList.applebyTeam!;
+        // Use the sport name instead of school name
+        final sportName = standingsList.sportsName;
+        Team team = standingsList.applebyTeam;
 
-          // Create new team with sport name instead of "Appleby College"
-          _applebyTeams.add(
-            Team(
-              name: sportName,
-              rank: team.rank,
-              record: team.record,
-              sportIcon: team.sportIcon,
-              leagueCode: leagueCode,
-            ),
-          );
-        }
+        // Create new team with sport name instead of "Appleby College"
+        _applebyTeams.add(
+          Team(
+            name: sportName,
+            rank: team.rank,
+            record: team.record,
+            sportIcon: team.sportIcon,
+            leagueCode: leagueCode,
+          ),
+        );
       });
 
       // Sort teams by rank (best performing first)
@@ -205,7 +197,12 @@ class _SportsPageState extends State<SportsPage> {
     // Recent games - games in the past with scores
     List<Game> playedGames =
         allGamesList
-            .where((game) => game.date.isBefore(now) && game.homeScore != "-" && game.awayScore != "-")
+            .where(
+              (game) =>
+                  game.date.isBefore(now) &&
+                  game.homeScore != '-' &&
+                  game.awayScore != '-',
+            )
             .toList();
 
     // Sort played games by date descending (most recent first)
@@ -214,7 +211,11 @@ class _SportsPageState extends State<SportsPage> {
     // Upcoming games - games in the future or with no scores
     List<Game> upcoming =
         allGamesList
-            .where((game) => game.date.isAfter(now) || (game.homeScore == "-" && game.awayScore == "-"))
+            .where(
+              (game) =>
+                  game.date.isAfter(now) ||
+                  (game.homeScore == '-' && game.awayScore == '-'),
+            )
             .toList();
 
     // Sort upcoming games by date ascending (closest first)
@@ -236,7 +237,7 @@ class _SportsPageState extends State<SportsPage> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          CEAppBar(title: "Sports"),
+          CEAppBar(title: 'Sports'),
           SliverToBoxAdapter(
             child: Column(
               children: [
@@ -253,16 +254,23 @@ class _SportsPageState extends State<SportsPage> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
                         // Change from color fill to border
-                        border: Border.all(color: Theme.of(context).colorScheme.error, width: 2.0),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.error,
+                          width: 2.0,
+                        ),
                       ),
                       child: Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+                            Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
                             SizedBox(height: 16),
                             Text(
-                              "Could not load featured athletes",
+                              'Could not load featured athletes',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
@@ -274,10 +282,12 @@ class _SportsPageState extends State<SportsPage> {
                             ElevatedButton.icon(
                               onPressed: _loadAthleteArticles,
                               icon: Icon(Icons.refresh, size: 16),
-                              label: Text("Retry"),
+                              label: Text('Retry'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).colorScheme.error,
-                                foregroundColor: Theme.of(context).colorScheme.onError,
+                                backgroundColor:
+                                    Theme.of(context).colorScheme.error,
+                                foregroundColor:
+                                    Theme.of(context).colorScheme.onError,
                               ),
                             ),
                           ],
@@ -290,19 +300,33 @@ class _SportsPageState extends State<SportsPage> {
                       margin: EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
-                        color: Theme.of(context).colorScheme.surfaceVariant,
+                        color:
+                            Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
                       ),
                       child: Center(
                         child: Text(
-                          "No featured athletes this week",
-                          style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                          'No featured athletes this week',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     )
                     : CarouselSlider.builder(
                       itemCount: otw.length,
-                      itemBuilder: (BuildContext context, int itemIndex, int pageViewIndex) {
-                        return OTWWidget(uniqueId: otw[itemIndex].id ?? itemIndex.toString(), article: otw[itemIndex]);
+                      itemBuilder: (
+                        BuildContext context,
+                        int itemIndex,
+                        int pageViewIndex,
+                      ) {
+                        return OTWWidget(
+                          uniqueId: otw[itemIndex].id ?? itemIndex.toString(),
+                          article: otw[itemIndex],
+                        );
                       },
                       options: CarouselOptions(
                         viewportFraction: 1.0,
@@ -332,7 +356,8 @@ class _SportsPageState extends State<SportsPage> {
                             color:
                                 _currentIndex == index
                                     ? Theme.of(context).colorScheme.onSurface
-                                    : Theme.of(context).colorScheme.onSurface.withAlpha(127),
+                                    : Theme.of(context).colorScheme.onSurface
+                                        .withValues(alpha: 127),
                           ),
                         );
                       }),
@@ -348,13 +373,20 @@ class _SportsPageState extends State<SportsPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Recent", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+                  Text(
+                    'Recent',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+                  ),
                   OpacityTextButton(
-                    text: "View More",
+                    text: 'View More',
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const GameSearchPage(initialFilter: 'played')),
+                        MaterialPageRoute(
+                          builder:
+                              (context) =>
+                                  const GameSearchPage(initialFilter: 'played'),
+                        ),
                       );
                     },
                   ),
@@ -363,7 +395,7 @@ class _SportsPageState extends State<SportsPage> {
             ),
           ),
           SliverToBoxAdapter(
-            child: Container(
+            child: SizedBox(
               height: 190,
               child:
                   _isLoadingGames
@@ -373,22 +405,37 @@ class _SportsPageState extends State<SportsPage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
+                            Icon(
+                              Icons.error_outline,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
                             SizedBox(height: 8),
-                            Text("Could not load games", style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                            TextButton(onPressed: _loadGamesData, child: Text("Retry")),
+                            Text(
+                              'Could not load games',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _loadGamesData,
+                              child: Text('Retry'),
+                            ),
                           ],
                         ),
                       )
                       : _recentGames.isEmpty
-                      ? Center(child: Text("No recent games found"))
+                      ? Center(child: Text('No recent games found'))
                       : ListView.builder(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: _recentGames.length,
                         itemBuilder: (context, index) {
                           return Padding(
-                            padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+                            padding: const EdgeInsets.only(
+                              right: 16,
+                              top: 8,
+                              bottom: 8,
+                            ),
                             child: GameWidget(game: _recentGames[index]),
                           );
                         },
@@ -402,13 +449,21 @@ class _SportsPageState extends State<SportsPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Upcoming", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+                  Text(
+                    'Upcoming',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+                  ),
                   OpacityTextButton(
-                    text: "View More",
+                    text: 'View More',
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const GameSearchPage(initialFilter: 'upcoming')),
+                        MaterialPageRoute(
+                          builder:
+                              (context) => const GameSearchPage(
+                                initialFilter: 'upcoming',
+                              ),
+                        ),
                       );
                     },
                   ),
@@ -417,7 +472,7 @@ class _SportsPageState extends State<SportsPage> {
             ),
           ),
           SliverToBoxAdapter(
-            child: Container(
+            child: SizedBox(
               height: 190,
               child:
                   _isLoadingGames
@@ -427,22 +482,37 @@ class _SportsPageState extends State<SportsPage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
+                            Icon(
+                              Icons.error_outline,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
                             SizedBox(height: 8),
-                            Text("Could not load games", style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                            TextButton(onPressed: _loadGamesData, child: Text("Retry")),
+                            Text(
+                              'Could not load games',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _loadGamesData,
+                              child: Text('Retry'),
+                            ),
                           ],
                         ),
                       )
                       : _upcomingGames.isEmpty
-                      ? Center(child: Text("No upcoming games found"))
+                      ? Center(child: Text('No upcoming games found'))
                       : ListView.builder(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: _upcomingGames.length,
                         itemBuilder: (context, index) {
                           return Padding(
-                            padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+                            padding: const EdgeInsets.only(
+                              right: 16,
+                              top: 8,
+                              bottom: 8,
+                            ),
                             child: GameWidget(game: _upcomingGames[index]),
                           );
                         },
@@ -457,11 +527,19 @@ class _SportsPageState extends State<SportsPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Teams", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+                  Text(
+                    'Teams',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+                  ),
                   OpacityTextButton(
-                    text: "View More",
+                    text: 'View More',
                     onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => TeamsSearchPage()));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TeamsSearchPage(),
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -470,7 +548,7 @@ class _SportsPageState extends State<SportsPage> {
           ),
           SliverToBoxAdapter(child: SizedBox(height: 16)),
           SliverToBoxAdapter(
-            child: Container(
+            child: SizedBox(
               height: 190,
               child:
                   _isLoadingTeams
@@ -480,19 +558,33 @@ class _SportsPageState extends State<SportsPage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
+                            Icon(
+                              Icons.error_outline,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
                             SizedBox(height: 8),
-                            Text("Could not load teams", style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                            TextButton(onPressed: _loadTeamsData, child: Text("Retry")),
+                            Text(
+                              'Could not load teams',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _loadTeamsData,
+                              child: Text('Retry'),
+                            ),
                           ],
                         ),
                       )
                       : _applebyTeams.isEmpty
-                      ? Center(child: Text("No teams found"))
+                      ? Center(child: Text('No teams found'))
                       : ListView.builder(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _applebyTeams.length > 5 ? 5 : _applebyTeams.length, // Show max 5 teams
+                        itemCount:
+                            _applebyTeams.length > 5
+                                ? 5
+                                : _applebyTeams.length, // Show max 5 teams
                         itemBuilder: (context, index) {
                           return Padding(
                             padding: const EdgeInsets.only(right: 16.0),
@@ -502,7 +594,9 @@ class _SportsPageState extends State<SportsPage> {
                       ),
             ),
           ),
-          SliverToBoxAdapter(child: SizedBox(height: 64 + MediaQuery.of(context).padding.bottom)),
+          SliverToBoxAdapter(
+            child: SizedBox(height: 64 + MediaQuery.of(context).padding.bottom),
+          ),
         ],
       ),
     );
@@ -518,11 +612,12 @@ class OTWWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Construct unique tags
-    final String bannerTag = "banner-$uniqueId";
-    final String athleteNameTag = "athlete-name-$uniqueId";
-    final String athleteTitleTag = "athlete-title-$uniqueId";
+    final String bannerTag = 'banner-$uniqueId';
+    final String athleteNameTag = 'athlete-name-$uniqueId';
+    final String athleteTitleTag = 'athlete-title-$uniqueId';
 
-    final String typeTitle = article.type == 'athlete' ? 'Athlete of The Week' : 'Team of The Week';
+    final String typeTitle =
+        article.type == 'athlete' ? 'Athlete of The Week' : 'Team of The Week';
 
     return GestureDetector(
       onTap: () {
@@ -557,13 +652,24 @@ class OTWWidget extends StatelessWidget {
                       height: double.infinity,
                       placeholder:
                           (context, url) => Container(
-                            color: Theme.of(context).colorScheme.surfaceVariant,
+                            color:
+                                Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest,
                             child: Center(child: CircularProgressIndicator()),
                           ),
                       errorWidget:
                           (context, url, error) => Container(
-                            color: Theme.of(context).colorScheme.surfaceVariant,
-                            child: Center(child: Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error)),
+                            color:
+                                Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest,
+                            child: Center(
+                              child: Icon(
+                                Icons.error_outline,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
                           ),
                     ),
                   ),
@@ -574,7 +680,10 @@ class OTWWidget extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter + Alignment(0, 0.375),
                         end: Alignment.topCenter + Alignment(0, 1.25),
-                        colors: [Colors.black.withAlpha(190), Colors.transparent],
+                        colors: [
+                          Colors.black.withValues(alpha: 190),
+                          Colors.transparent,
+                        ],
                       ),
                     ),
                   ),
@@ -598,7 +707,11 @@ class OTWWidget extends StatelessWidget {
                           color: Colors.transparent,
                           child: Text(
                             article.name,
-                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: Colors.white),
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -608,7 +721,11 @@ class OTWWidget extends StatelessWidget {
                           color: Colors.transparent,
                           child: Text(
                             typeTitle,
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -627,22 +744,29 @@ class OTWWidget extends StatelessWidget {
 
 /// A skeleton loader for athlete articles that mimics the article preview shape
 class _ArticleSkeletonLoader extends StatefulWidget {
-  const _ArticleSkeletonLoader({Key? key}) : super(key: key);
+  const _ArticleSkeletonLoader({super.key});
 
   @override
   State<_ArticleSkeletonLoader> createState() => _ArticleSkeletonLoaderState();
 }
 
-class _ArticleSkeletonLoaderState extends State<_ArticleSkeletonLoader> with SingleTickerProviderStateMixin {
+class _ArticleSkeletonLoaderState extends State<_ArticleSkeletonLoader>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _opacityAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 1500), vsync: this)..repeat(reverse: true);
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
 
-    _opacityAnimation = Tween<double>(begin: 0.3, end: 0.6).animate(_controller);
+    _opacityAnimation = Tween<double>(
+      begin: 0.3,
+      end: 0.6,
+    ).animate(_controller);
   }
 
   @override
@@ -660,7 +784,12 @@ class _ArticleSkeletonLoaderState extends State<_ArticleSkeletonLoader> with Sin
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             // Replace gradient with a gray border
-            border: Border.all(color: Theme.of(context).colorScheme.outline.withAlpha(127), width: 1.0),
+            border: Border.all(
+              color: Theme.of(
+                context,
+              ).colorScheme.outline.withValues(alpha: 127),
+              width: 1.0,
+            ),
           ),
           child: Stack(
             children: [
@@ -677,7 +806,8 @@ class _ArticleSkeletonLoaderState extends State<_ArticleSkeletonLoader> with Sin
                       height: 24,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(_opacityAnimation.value),
+                        color: Theme.of(context).colorScheme.onSurface
+                            .withValues(alpha: _opacityAnimation.value),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -687,7 +817,8 @@ class _ArticleSkeletonLoaderState extends State<_ArticleSkeletonLoader> with Sin
                       height: 12,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(_opacityAnimation.value),
+                        color: Theme.of(context).colorScheme.onSurface
+                            .withValues(alpha: _opacityAnimation.value),
                       ),
                     ),
                   ],
@@ -703,7 +834,9 @@ class _ArticleSkeletonLoaderState extends State<_ArticleSkeletonLoader> with Sin
                   height: 24,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(_opacityAnimation.value),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(
+                      alpha: _opacityAnimation.value,
+                    ),
                   ),
                 ),
               ),

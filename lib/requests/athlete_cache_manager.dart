@@ -8,10 +8,10 @@ CacheManager athleteManager = AthleteArticleCacheManager();
 
 class AthleteArticleCacheManager extends CacheManager {
   AthleteArticleCacheManager({
-    String cacheKey = 'athlete_data',
-    Duration smallThreshold = const Duration(minutes: 5),
-    Duration largeThreshold = const Duration(days: 2),
-  }) : super(cacheKey: cacheKey, smallThreshold: smallThreshold, largeThreshold: largeThreshold);
+    super.cacheKey = 'athlete_data',
+    super.smallThreshold,
+    super.largeThreshold = const Duration(days: 2),
+  });
 
   @override
   Future<Map<String, List<AthleteArticle>>> fetchData() async {
@@ -30,8 +30,10 @@ class AthleteArticleCacheManager extends CacheManager {
         final data = doc.data() as Map<String, dynamic>;
 
         // Parse Timestamp fields to DateTime
-        final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
-        final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+        final createdAt =
+            (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+        final updatedAt =
+            (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now();
 
         // Parse weekOf field - the field name from the image suggests it might be weekOf
         String? weekOfString = data['weekOf'] as String?;
@@ -81,7 +83,9 @@ class AthleteArticleCacheManager extends CacheManager {
       athleteArticles.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       // Create a map with "articles" key pointing to the list
-      final Map<String, List<AthleteArticle>> articlesMap = {'articles': athleteArticles};
+      final Map<String, List<AthleteArticle>> articlesMap = {
+        'articles': athleteArticles,
+      };
 
       // Store the fetched data as a map
       super.storeData(articlesMap);
@@ -95,13 +99,16 @@ class AthleteArticleCacheManager extends CacheManager {
   @override
   String encodeData(dynamic data) {
     // Cast to the correct type: a map with string key and list of AthleteArticle value
-    final Map<String, List<AthleteArticle>> articlesMap = data as Map<String, List<AthleteArticle>>;
+    final Map<String, List<AthleteArticle>> articlesMap =
+        data as Map<String, List<AthleteArticle>>;
 
     // Extract the list of articles
     final List<AthleteArticle> articles = articlesMap['articles'] ?? [];
 
     // Convert to a proper json structure
-    final Map<String, dynamic> jsonMap = {'articles': articles.map((article) => article.toMap()).toList()};
+    final Map<String, dynamic> jsonMap = {
+      'articles': articles.map((article) => article.toMap()).toList(),
+    };
 
     return jsonEncode(jsonMap);
   }
@@ -110,11 +117,14 @@ class AthleteArticleCacheManager extends CacheManager {
   Map<String, List<AthleteArticle>> decodeData(String data) {
     if (data.isEmpty) return {'articles': []};
 
-    final Map<String, dynamic> jsonMap = jsonDecode(data) as Map<String, dynamic>;
+    final Map<String, dynamic> jsonMap =
+        jsonDecode(data) as Map<String, dynamic>;
     final List<dynamic> articlesJson = jsonMap['articles'] as List<dynamic>;
 
     final List<AthleteArticle> articles =
-        articlesJson.map((item) => AthleteArticle.fromMap(item as Map<String, dynamic>)).toList();
+        articlesJson
+            .map((item) => AthleteArticle.fromMap(item as Map<String, dynamic>))
+            .toList();
 
     return {'articles': articles};
   }

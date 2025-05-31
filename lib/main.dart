@@ -50,12 +50,12 @@ class MyApp extends StatelessWidget {
     final String? link = prefs.getString('link');
 
     // If no link is saved or setup is not complete, show welcome/setup flow
-    if (setup != "complete") {
+    if (setup != 'complete') {
       return const WelcomePage();
     }
 
-    // If setup is complete, go to main app
     return const MyHomePage();
+    // return const WelcomePage();
   }
 }
 

@@ -47,7 +47,10 @@ abstract class CacheManager {
   /// Returns a string representation of the cache status
   String getCacheStatusString() {
     final status = getCacheStatus();
-    return status.toString().split('.').last; // Converts 'CacheStatus.fresh' to 'fresh'
+    return status
+        .toString()
+        .split('.')
+        .last; // Converts 'CacheStatus.fresh' to 'fresh'
   }
 
   Future<dynamic> fetchData();

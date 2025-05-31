@@ -20,7 +20,8 @@ class OTWScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String typeTitle = article.type == 'athlete' ? 'Athlete of the Week' : 'Team of the Week';
+    final String typeTitle =
+        article.type == 'athlete' ? 'Athlete of the Week' : 'Team of the Week';
     final DateFormat formatter = DateFormat('MMMM d, yyyy');
     final String formattedDate = formatter.format(article.weekOf);
 
@@ -37,11 +38,14 @@ class OTWScreen extends StatelessWidget {
                 // Calculate scroll progress
                 double progress = 1.0;
                 double height = constraints.maxHeight;
-                final double collapsedHeight = MediaQuery.of(context).padding.top + 35;
+                final double collapsedHeight =
+                    MediaQuery.of(context).padding.top + 35;
 
                 if (height > collapsedHeight) {
-                  final double maxHeight = 256 + MediaQuery.of(context).padding.top;
-                  progress = (maxHeight - height) / (maxHeight - collapsedHeight);
+                  final double maxHeight =
+                      256 + MediaQuery.of(context).padding.top;
+                  progress =
+                      (maxHeight - height) / (maxHeight - collapsedHeight);
                 }
 
                 // Clamp progress between 0.0 and 1.0
@@ -65,8 +69,14 @@ class OTWScreen extends StatelessWidget {
                                 image: DecorationImage(
                                   image: NetworkImage(article.imageUrl),
                                   fit: BoxFit.cover,
-                                  colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
-                                  onError: (exception, stackTrace) => AssetImage("assets/placeholder_athlete.png"),
+                                  colorFilter: ColorFilter.mode(
+                                    Colors.black.withValues(alpha: 0.4),
+                                    BlendMode.darken,
+                                  ),
+                                  onError:
+                                      (exception, stackTrace) => AssetImage(
+                                        'assets/placeholder_athlete.png',
+                                      ),
                                 ),
                               ),
                             ),
@@ -88,7 +98,10 @@ class OTWScreen extends StatelessWidget {
                                 image: DecorationImage(
                                   image: NetworkImage(article.imageUrl),
                                   fit: BoxFit.cover,
-                                  onError: (exception, stackTrace) => AssetImage("assets/placeholder_athlete.png"),
+                                  onError:
+                                      (exception, stackTrace) => AssetImage(
+                                        'assets/placeholder_athlete.png',
+                                      ),
                                 ),
                               ),
                             ),
@@ -97,9 +110,16 @@ class OTWScreen extends StatelessWidget {
                               child: Container(
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
-                                    begin: Alignment.bottomCenter + Alignment(0, -0.75),
-                                    end: Alignment.bottomCenter + Alignment(0, -1.5),
-                                    colors: [Colors.black.withAlpha(190), Colors.transparent],
+                                    begin:
+                                        Alignment.bottomCenter +
+                                        Alignment(0, -0.75),
+                                    end:
+                                        Alignment.bottomCenter +
+                                        Alignment(0, -1.5),
+                                    colors: [
+                                      Colors.black.withAlpha(190),
+                                      Colors.transparent,
+                                    ],
                                   ),
                                 ),
                               ),
@@ -138,7 +158,11 @@ class OTWScreen extends StatelessWidget {
                                   color: Colors.transparent,
                                   child: Text(
                                     article.name,
-                                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 36, color: Colors.white),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 36,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -149,14 +173,21 @@ class OTWScreen extends StatelessWidget {
                                   color: Colors.transparent,
                                   child: Text(
                                     typeTitle,
-                                    style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w500),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
                               ),
                               SizedBox(height: 4),
                               Text(
-                                "Week of $formattedDate",
-                                style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.8)),
+                                'Week of $formattedDate',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                ),
                               ),
                             ],
                           ),
@@ -191,11 +222,19 @@ class OTWScreen extends StatelessWidget {
                               child: Center(
                                 child: Text(
                                   typeTitle,
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
-                            Flexible(child: SizedBox(), flex: 3, fit: FlexFit.tight),
+                            Flexible(
+                              flex: 3,
+                              fit: FlexFit.tight,
+                              child: SizedBox(),
+                            ),
                           ],
                         ),
                       ),
@@ -215,20 +254,30 @@ class OTWScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (article.content.isNotEmpty)
-                    Text(article.content, style: TextStyle(fontSize: 16, height: 1.6))
+                    Text(
+                      article.content,
+                      style: TextStyle(fontSize: 16, height: 1.6),
+                    )
                   else
                     Text(
-                      "No additional information available for this featured ${article.type}.",
+                      'No additional information available for this featured ${article.type}.',
                       style: TextStyle(
                         fontSize: 16,
                         fontStyle: FontStyle.italic,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
                   SizedBox(height: 24),
                   Text(
                     "Added on: ${DateFormat('MMMM d, yyyy').format(article.createdAt)}",
-                    style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
                   ),
                 ],
               ),

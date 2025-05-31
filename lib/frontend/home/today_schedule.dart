@@ -11,7 +11,11 @@ class TodayScheduleDialog extends StatefulWidget {
   final Map<DateTime, CalendarItem>? calendarData;
   final DateTime dateToShow;
 
-  const TodayScheduleDialog({Key? key, required this.calendarData, required this.dateToShow}) : super(key: key);
+  const TodayScheduleDialog({
+    super.key,
+    required this.calendarData,
+    required this.dateToShow,
+  });
 
   @override
   State<TodayScheduleDialog> createState() => _TodayScheduleDialogState();
@@ -40,7 +44,9 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
     if (widget.calendarData == null) return [];
     final normalizedDate = DateTime(date.year, date.month, date.day);
     if (widget.calendarData!.containsKey(normalizedDate)) {
-      var items = List<ScheduleItem>.from(widget.calendarData![normalizedDate]!.schedule);
+      var items = List<ScheduleItem>.from(
+        widget.calendarData![normalizedDate]!.schedule,
+      );
       items.sort((a, b) {
         final aMinutes = a.startTime.hour * 60 + a.startTime.minute;
         final bMinutes = b.startTime.hour * 60 + b.startTime.minute;
@@ -63,24 +69,39 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
 
     for (final item in _scheduleItems) {
       if (item.startTime.hour < earliest.hour ||
-          (item.startTime.hour == earliest.hour && item.startTime.minute < earliest.minute)) {
+          (item.startTime.hour == earliest.hour &&
+              item.startTime.minute < earliest.minute)) {
         earliest = item.startTime;
       }
       if (item.endTime.hour > latest.hour ||
-          (item.endTime.hour == latest.hour && item.endTime.minute > latest.minute)) {
+          (item.endTime.hour == latest.hour &&
+              item.endTime.minute > latest.minute)) {
         latest = item.endTime;
       }
     }
-    _scheduleStartTime = TimeOfDay(hour: (earliest.hour).clamp(0, 23), minute: 0);
-    _scheduleEndTime = TimeOfDay(hour: (latest.hour + 1).clamp(0, 23), minute: 59);
+    _scheduleStartTime = TimeOfDay(
+      hour: (earliest.hour).clamp(0, 23),
+      minute: 0,
+    );
+    _scheduleEndTime = TimeOfDay(
+      hour: (latest.hour + 1).clamp(0, 23),
+      minute: 59,
+    );
 
     // Ensure end time is at least one hour after start time if they are too close
-    if (_scheduleStartTime.hour == _scheduleEndTime.hour && _scheduleStartTime.minute >= _scheduleEndTime.minute) {
-      _scheduleEndTime = TimeOfDay(hour: (_scheduleStartTime.hour + 1).clamp(0, 23), minute: _scheduleStartTime.minute);
+    if (_scheduleStartTime.hour == _scheduleEndTime.hour &&
+        _scheduleStartTime.minute >= _scheduleEndTime.minute) {
+      _scheduleEndTime = TimeOfDay(
+        hour: (_scheduleStartTime.hour + 1).clamp(0, 23),
+        minute: _scheduleStartTime.minute,
+      );
     }
     if (_scheduleStartTime.hour > _scheduleEndTime.hour) {
       // Should not happen with current logic, but as a safeguard
-      _scheduleEndTime = TimeOfDay(hour: _scheduleStartTime.hour, minute: 59); // Make it end of start hour
+      _scheduleEndTime = TimeOfDay(
+        hour: _scheduleStartTime.hour,
+        minute: 59,
+      ); // Make it end of start hour
     }
   }
 
@@ -90,7 +111,11 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
         !(_scheduleStartTime.hour == 23 && _scheduleEndTime.hour == 0))
       return slots;
 
-    for (int hour = _scheduleStartTime.hour; hour <= _scheduleEndTime.hour; hour++) {
+    for (
+      int hour = _scheduleStartTime.hour;
+      hour <= _scheduleEndTime.hour;
+      hour++
+    ) {
       final String timeString;
       if (hour == 0 || hour == 12) {
         timeString = '12';
@@ -124,7 +149,12 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
                 fit: FlexFit.tight,
                 child: Text(
                   timeString,
-                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withAlpha(127)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withAlpha(127),
+                  ),
                 ),
               ),
               Flexible(
@@ -132,10 +162,20 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
                 fit: FlexFit.tight,
                 child: Text(
                   period,
-                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withAlpha(127)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withAlpha(127),
+                  ),
                 ),
               ),
-              Flexible(flex: 15, child: Divider(color: Theme.of(context).colorScheme.onSurface.withAlpha(50))),
+              Flexible(
+                flex: 15,
+                child: Divider(
+                  color: Theme.of(context).colorScheme.onSurface.withAlpha(50),
+                ),
+              ),
             ],
           ),
         ),
@@ -146,10 +186,15 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
 
   Widget _buildScheduleItemWidget(ScheduleItem item) {
     final startMinutes = item.startTime.hour * 60 + item.startTime.minute;
-    final scheduleStartMinutes = _scheduleStartTime.hour * 60 + _scheduleStartTime.minute;
+    final scheduleStartMinutes =
+        _scheduleStartTime.hour * 60 + _scheduleStartTime.minute;
 
-    final double topPosition = ((startMinutes - scheduleStartMinutes) * (HOUR_HEIGHT / 60.0)) + 7.5;
-    final double height = max(item.durationMinutes * (HOUR_HEIGHT / 60.0), 24.0);
+    final double topPosition =
+        ((startMinutes - scheduleStartMinutes) * (HOUR_HEIGHT / 60.0)) + 7.5;
+    final double height = max(
+      item.durationMinutes * (HOUR_HEIGHT / 60.0),
+      24.0,
+    );
 
     return Positioned(
       top: topPosition,
@@ -158,7 +203,7 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
       child: Flex(
         direction: Axis.horizontal,
         children: [
-          const Flexible(child: SizedBox(), flex: 3, fit: FlexFit.tight),
+          const Flexible(flex: 3, fit: FlexFit.tight, child: SizedBox()),
           Flexible(
             flex: 15,
             fit: FlexFit.tight,
@@ -166,7 +211,10 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
               height: height,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primary.withAlpha(220),
-                border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 2,
+                ),
                 borderRadius: BorderRadius.circular(4),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -187,7 +235,13 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(item.timeRange, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onPrimary)),
+                  Text(
+                    item.timeRange,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -204,13 +258,19 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
         height: 100,
         alignment: Alignment.center,
         child: Text(
-          "No schedule for today",
-          style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurface.withAlpha(150)),
+          'No schedule for today',
+          style: TextStyle(
+            fontSize: 16,
+            color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
+          ),
         ),
       );
     }
 
-    final int totalScheduleHours = max(1, _scheduleEndTime.hour - _scheduleStartTime.hour + 1);
+    final int totalScheduleHours = max(
+      1,
+      _scheduleEndTime.hour - _scheduleStartTime.hour + 1,
+    );
     // This is the total height required by the stack content.
     final double calculatedStackHeight = totalScheduleHours * HOUR_HEIGHT + 40;
     List<Widget> timeSlots = _buildTimeSlots();
@@ -220,14 +280,20 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
     // the height allocated by the SizedBox in AlertDialog.content.
     return SingleChildScrollView(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16), // Added horizontal padding
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+        ), // Added horizontal padding
         width: double.infinity,
-        height: calculatedStackHeight, // The actual height of the scrollable content
+        height:
+            calculatedStackHeight, // The actual height of the scrollable content
         child: Stack(
           fit: StackFit.loose,
           clipBehavior: Clip.none, // Keep as none, scrolling handles visibility
           children: [
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: timeSlots),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: timeSlots,
+            ),
             ..._scheduleItems.map((item) => _buildScheduleItemWidget(item)),
           ],
         ),
@@ -241,20 +307,32 @@ class _TodayScheduleDialogState extends State<TodayScheduleDialog> {
 
     return AlertDialog(
       title: Text(
-        "Today",
+        'Today',
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       ), // This acts as the persistent header
       titlePadding: EdgeInsets.all(16), // Control padding around the title
-      insetPadding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 24.0), // Control padding around the dialog
-      contentPadding: EdgeInsets.zero, // Remove default padding to control it with SizedBox
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: 8.0,
+        vertical: 24.0,
+      ), // Control padding around the dialog
+      contentPadding:
+          EdgeInsets.zero, // Remove default padding to control it with SizedBox
       content: SizedBox(
         // Width will be constrained by AlertDialog's insetPadding and its default behavior to expand.
         // We only explicitly set the height for the content area.
-        width: double.maxFinite, // Instructs SizedBox to be as wide as parent allows
-        height: screenHeight * 0.5, // Set desired max height for the content area
+        width:
+            double
+                .maxFinite, // Instructs SizedBox to be as wide as parent allows
+        height:
+            screenHeight * 0.5, // Set desired max height for the content area
         child: _buildDialogScheduleView(), // This now returns a scrollable view
       ),
-      actions: [TextButton(child: const Text("Close"), onPressed: () => Navigator.of(context).pop())],
+      actions: [
+        TextButton(
+          child: const Text('Close'),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
       // AlertDialog's own scrollable property can be true if title + content + actions
       // together might overflow the screen. For now, we focus on content scrolling.
       // scrollable: true,

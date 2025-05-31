@@ -4,5 +4,10 @@ class Assessment {
   String title;
   String? description;
 
-  Assessment({required this.className, required this.date, required this.title, this.description});
+  Assessment({
+    required this.className,
+    required this.date,
+    required this.title,
+    this.description,
+  });
 }

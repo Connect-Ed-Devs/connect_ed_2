@@ -1,41 +1,8 @@
 import 'package:flutter/material.dart';
 
-// Basic blue button
-class OpacityButton extends StatefulWidget {
-  final VoidCallback? onPressed;
-  final Widget child;
-
-  const OpacityButton({
-    super.key,
-    required this.onPressed,
-    required this.child,
-  });
-
-  @override
-  State<OpacityButton> createState() => _OpacityButtonState();
-}
-
-class _OpacityButtonState extends State<OpacityButton> {
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) => setState(() => _isPressed = false),
-      onTapCancel: () => setState(() => _isPressed = false),
-      onTap: widget.onPressed,
-      child: AnimatedOpacity(
-        opacity: _isPressed ? 0.6 : 1.0,
-        duration: const Duration(milliseconds: 100),
-        child: widget.child,
-      ),
-    );
-  }
-}
-
-// Better button
-class AestheticButton extends StatefulWidget {
+/// Customizable and responsive button that looks good
+/// Defaults to standard navy blue
+class OpacityBlockButton extends StatefulWidget {
   final String text;
   final VoidCallback onPressed;
   final double? width;
@@ -45,7 +12,7 @@ class AestheticButton extends StatefulWidget {
   final double borderRadius;
   final double elevation;
 
-  const AestheticButton({
+  const OpacityBlockButton({
     super.key,
     required this.text,
     required this.onPressed,
@@ -58,10 +25,10 @@ class AestheticButton extends StatefulWidget {
   });
 
   @override
-  State<AestheticButton> createState() => _AestheticButtonState();
+  State<OpacityBlockButton> createState() => _OpacityBlockButtonState();
 }
 
-class _AestheticButtonState extends State<AestheticButton>
+class _OpacityBlockButtonState extends State<OpacityBlockButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
@@ -123,7 +90,7 @@ class _AestheticButtonState extends State<AestheticButton>
             borderRadius: BorderRadius.circular(widget.borderRadius),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withValues(alpha: 0.2),
                 blurRadius: widget.elevation,
                 offset: const Offset(0, 2),
               ),
@@ -137,8 +104,7 @@ class _AestheticButtonState extends State<AestheticButton>
               child: Center(
                 child: Text(
                   widget.text,
-                  style:
-                      widget.textStyle ??
+                  style: widget.textStyle ??
                       const TextStyle(
                         color: Colors.white,
                         fontSize: 18,

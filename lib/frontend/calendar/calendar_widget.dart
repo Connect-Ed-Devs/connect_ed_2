@@ -5,13 +5,18 @@ class CalendarWidget extends StatefulWidget {
   final bool isInAppBar;
   final bool forceWeekView;
 
-  const CalendarWidget({super.key, this.isInAppBar = false, this.forceWeekView = false});
+  const CalendarWidget({
+    super.key,
+    this.isInAppBar = false,
+    this.forceWeekView = false,
+  });
 
   @override
   State<CalendarWidget> createState() => _CalendarWidgetState();
 }
 
-class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStateMixin {
+class _CalendarWidgetState extends State<CalendarWidget>
+    with TickerProviderStateMixin {
   // Track which week to display based on selected date
   late int _currentWeekIndex;
 
@@ -34,7 +39,10 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
   // Helper method to get or create animation controller for a date
   AnimationController _getController(DateTime date) {
     if (!_controllers.containsKey(date)) {
-      _controllers[date] = AnimationController(duration: const Duration(milliseconds: 250), vsync: this);
+      _controllers[date] = AnimationController(
+        duration: const Duration(milliseconds: 250),
+        vsync: this,
+      );
     }
     return _controllers[date]!;
   }
@@ -56,7 +64,9 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
 
     // First day of the calendar grid (may be from the previous month)
     int firstDayOffset = firstDay.weekday % 7;
-    final DateTime firstCalendarDay = firstDay.subtract(Duration(days: firstDayOffset));
+    final DateTime firstCalendarDay = firstDay.subtract(
+      Duration(days: firstDayOffset),
+    );
 
     // Calculate how many weeks we need
     int lastDayOffset = lastDay.weekday % 7;
@@ -67,7 +77,9 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
     for (int week = 0; week < weeksNeeded; week++) {
       final List<DateTime> weekDays = [];
       for (int day = 0; day < 7; day++) {
-        final DateTime date = firstCalendarDay.add(Duration(days: week * 7 + day));
+        final DateTime date = firstCalendarDay.add(
+          Duration(days: week * 7 + day),
+        );
         weekDays.add(date);
       }
       result.add(weekDays);
@@ -80,7 +92,9 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
   int _getWeekIndex(List<List<DateTime>> days, DateTime selectedDate) {
     for (int i = 0; i < days.length; i++) {
       for (final DateTime day in days[i]) {
-        if (day.year == selectedDate.year && day.month == selectedDate.month && day.day == selectedDate.day) {
+        if (day.year == selectedDate.year &&
+            day.month == selectedDate.month &&
+            day.day == selectedDate.day) {
           return i;
         }
       }
@@ -118,11 +132,18 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
     final DateTime todayDate = DateTime(now.year, now.month, now.day);
 
     // Date container builder function
-    Widget buildDateContainer(DateTime date, bool isSelected, bool isCurrentMonth) {
+    Widget buildDateContainer(
+      DateTime date,
+      bool isSelected,
+      bool isCurrentMonth,
+    ) {
       final controller = _getController(date);
       final theme = Theme.of(context); // Get theme here
 
-      final bool isToday = date.year == todayDate.year && date.month == todayDate.month && date.day == todayDate.day;
+      final bool isToday =
+          date.year == todayDate.year &&
+          date.month == todayDate.month &&
+          date.day == todayDate.day;
 
       BoxDecoration? cellDecoration;
       Color textColor;
@@ -131,11 +152,21 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
 
       // Determine border style if it's today
       if (isToday) {
-        borderStyle = Border.all(color: isSelected ? theme.colorScheme.outline : theme.colorScheme.primary, width: 1.5);
+        borderStyle = Border.all(
+          color:
+              isSelected
+                  ? theme.colorScheme.outline
+                  : theme.colorScheme.primary,
+          width: 1.5,
+        );
       }
 
       if (isSelected) {
-        cellDecoration = BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle, border: borderStyle);
+        cellDecoration = BoxDecoration(
+          color: theme.colorScheme.primary,
+          shape: BoxShape.circle,
+          border: borderStyle,
+        );
         textColor = theme.colorScheme.onPrimary;
         fontWeight = FontWeight.w500;
       } else if (isToday) {
@@ -144,7 +175,10 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
         fontWeight = FontWeight.w500;
       } else {
         cellDecoration = BoxDecoration(color: Colors.transparent);
-        textColor = isCurrentMonth ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withAlpha(127);
+        textColor =
+            isCurrentMonth
+                ? theme.colorScheme.onSurface
+                : theme.colorScheme.onSurface.withAlpha(127);
       }
 
       return FadeTransition(
@@ -176,7 +210,9 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
 
     return Container(
       color: Theme.of(context).colorScheme.surface,
-      padding: EdgeInsets.symmetric(horizontal: widget.isInAppBar ? 0 : HORIZONTAL_PADDING),
+      padding: EdgeInsets.symmetric(
+        horizontal: widget.isInAppBar ? 0 : HORIZONTAL_PADDING,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -188,13 +224,17 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children:
-                    const ["S", "M", "T", "W", "T", "F", "S"]
+                    const ['S', 'M', 'T', 'W', 'T', 'F', 'S']
                         .map(
                           (day) => Expanded(
                             child: Text(
                               day,
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey,
+                              ),
                             ),
                           ),
                         )
@@ -219,19 +259,31 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children:
                               week.map((date) {
-                                final bool isCurrentMonth = date.month == currentMonth.month;
+                                final bool isCurrentMonth =
+                                    date.month == currentMonth.month;
                                 final bool isSelected =
                                     date.year == selectedDate.year &&
                                     date.month == selectedDate.month &&
                                     date.day == selectedDate.day;
 
-                                return Expanded(child: buildDateContainer(date, isSelected, isCurrentMonth));
+                                return Expanded(
+                                  child: buildDateContainer(
+                                    date,
+                                    isSelected,
+                                    isCurrentMonth,
+                                  ),
+                                );
                               }).toList(),
                         ),
                         if (!isLastWeek)
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Divider(height: 1, color: Theme.of(context).dividerColor.withAlpha(50)),
+                            child: Divider(
+                              height: 1,
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withAlpha(50),
+                            ),
                           ),
                       ],
                     );
@@ -242,13 +294,20 @@ class _CalendarWidgetState extends State<CalendarWidget> with TickerProviderStat
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children:
                   days[_currentWeekIndex].map((date) {
-                    final bool isCurrentMonth = date.month == currentMonth.month;
+                    final bool isCurrentMonth =
+                        date.month == currentMonth.month;
                     final bool isSelected =
                         date.year == selectedDate.year &&
                         date.month == selectedDate.month &&
                         date.day == selectedDate.day;
 
-                    return Expanded(child: buildDateContainer(date, isSelected, isCurrentMonth));
+                    return Expanded(
+                      child: buildDateContainer(
+                        date,
+                        isSelected,
+                        isCurrentMonth,
+                      ),
+                    );
                   }).toList(),
             ),
         ],

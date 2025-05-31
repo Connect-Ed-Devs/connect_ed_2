@@ -1,0 +1,96 @@
+# Overview
+Connect-Ed is a mobile and web application designed to streamline and enhance the daily experience of students at [Your School Name]. The app serves as a centralized hub for all essential school-related information, aiming to save students time and reduce friction in accessing schedules, meal menus, sports events, scores, and academic assessments. By integrating with the school's webcal feed and other data sources, Connect-Ed delivers real-time, tailored content to the student body.
+
+# Core Features
+- **Personalized Schedules** (Complete)
+  - Displays each student's daily and weekly class schedule, including special events and holidays, by syncing with the school's webcal feed.
+  - Allows students to filter by day, week, or custom range.
+- **Meal Menus** (Complete)
+  - Shows breakfast, lunch, and dinner menus for the cafeteria, updated daily.
+  - Highlights dietary options and allergens.
+- **Sports Events & Scores** (Complete)
+  - Lists upcoming sports events and games, with details such as time, location, and participating teams.
+  - Provides live or recently updated scores and results.
+- **Assessment Tracker** (Complete)
+  - Lets students track upcoming assessments, assignment due dates, and exam schedules.
+  - Integrates with the calendar and provides reminders.
+- **Unified Calendar View** (Complete)
+  - Combines all events (classes, meals, sports, assessments) into a single, color-coded calendar interface.
+- **Notifications & Reminders** (Complete)
+  - Sends push notifications for schedule changes, new menu items, sports results, and assessment deadlines.
+- **Improved UI Design**
+  - Redesign the app for a more modern, aesthetic, and professional look.
+- **Android Release**
+  - Prepare and optimize the app for Android devices.
+- **Widget Integration**
+  - Add widgets for quick access to schedules, menus, and sports info from the home screen.
+- **Live Sports Scores & Streams**
+  - Integrate live score updates and streaming for sports events.
+- **School Events Page**
+  - Dedicated page for upcoming school events beyond sports.
+- **Articles Page**
+  - Section for school news, articles, and announcements.
+- **More Features**
+  - Placeholder for additional features as needs arise.
+
+# User Experience
+- **User Personas**
+  - Students (primary), teachers (secondary, for event/assessment input), parents (optional, for viewing info)
+- **Key User Flows**
+  - Student logs in → views today's schedule and menu → checks for upcoming assessments → browses sports events
+  - Student receives notification about a schedule change or new sports result
+- **UI/UX Considerations**
+  - Mobile-first, clean and intuitive navigation
+  - Color-coded events and categories
+  - Accessibility for visually impaired users
+  - Aesthetic, modern, and professional look
+
+# Technical Architecture
+- **System Components**
+  - Mobile app (iOS and Flutter, Android in the future)
+  - Web dashboard (for admin/teacher input)
+  - Backend server (Node.js/Express or similar) (Complete)
+  - Database (FireBase) (Complete)
+- **Data Models**
+  - User, ScheduleEvent, Menu, SportsEvent, Assessment
+- **APIs and Integrations**
+  - Webcal feed parser for schedules and events (Complete)
+  - Admin API for menu and assessment input (Complete)
+  - Push notification service (Firebase Cloud Messaging or similar) (Complete)
+- **Infrastructure Requirements**
+  - Cloud hosting (AWS/GCP/Azure)
+  - Secure authentication (OAuth or SSO)
+
+# Development Roadmap
+- **Current Priorities**
+  - Improved UI design
+  - Android release
+  - Widget integration
+  - Live sports scores and streaming
+  - School events page
+  - Articles page
+  - Additional features as identified
+- **Future Enhancements**
+  - User authentication
+  - Parent/teacher portals
+  - Advanced analytics (attendance, performance)
+  - Social features (student groups, chat)
+
+# Logical Dependency Chain
+- Polish UI/UX and accessibility
+- Prepare Android release
+- Implement widget integration
+- Integrate live sports scores and streaming
+- Build school events page
+- Build articles page
+- Add more features as needed
+
+# Risks and Mitigations
+- **Webcal Feed Reliability**: Implement robust error handling and fallback for feed outages.
+- **Data Privacy**: Ensure secure authentication and data storage.
+- **Scope Creep**: Focus on current priorities before enhancements.
+
+# Appendix
+- Research on student app usage and needs
+- Example webcal feed formats
+- Technical specs for push notifications 
