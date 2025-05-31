@@ -4,7 +4,9 @@ import 'package:connect_ed_2/classes/assessment.dart';
 import 'package:connect_ed_2/classes/calendar_item.dart';
 import 'package:connect_ed_2/classes/schedule_item.dart';
 import 'package:connect_ed_2/classes/menu_section.dart';
-import 'package:connect_ed_2/frontend/calendar/calendar_app_bar.dart';
+import 'package:connect_ed_2/frontend/calendar/calendar_appbar.dart';
+import 'package:connect_ed_2/frontend/calendar/open_event.dart';
+import 'package:connect_ed_2/logger.dart';
 import 'package:connect_ed_2/requests/cache_manager.dart';
 import 'package:connect_ed_2/requests/calendar_requests.dart';
 import 'package:connect_ed_2/requests/menu_cache_manager.dart';
@@ -20,7 +22,8 @@ class CalendarPage extends StatefulWidget {
   State<CalendarPage> createState() => _CalendarPageState();
 }
 
-class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMixin {
+class _CalendarPageState extends State<CalendarPage>
+    with TickerProviderStateMixin {
   // Controller to help manage scrolling
   final ScrollController _scrollController = ScrollController();
 
@@ -51,14 +54,16 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   Map<DateTime, List<MenuSection>>? _menuData;
   bool _isLoadingMenu = false;
   bool _hasMenuLoadError = false;
-  Map<int, bool> _expandedMenuSections = {};
+  final Map<int, bool> _expandedMenuSections = {};
 
   @override
   void initState() {
     super.initState();
 
     // Initialize page controller with initial date
-    _dayPageController = PageController(initialPage: 500); // Start at middle to allow for past/future swiping
+    _dayPageController = PageController(
+      initialPage: 500,
+    ); // Start at middle to allow for past/future swiping
 
     // Initialize schedule time range with default values to prevent LateInitializationError
     _scheduleStartTime = const TimeOfDay(hour: 8, minute: 0);
@@ -71,13 +76,26 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   // Calculate page index from a date
   int _getPageIndexFromDate(DateTime date) {
     // Calculate the difference in days between the date and today
-    return 500 + date.difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)).inDays;
+    return 500 +
+        date
+            .difference(
+              DateTime(
+                DateTime.now().year,
+                DateTime.now().month,
+                DateTime.now().day,
+              ),
+            )
+            .inDays;
   }
 
   // Calculate date from page index
   DateTime _getDateFromPageIndex(int index) {
     // Page 500 is today, each page is +/- 1 day
-    return DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day).add(Duration(days: index - 500));
+    return DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    ).add(Duration(days: index - 500));
   }
 
   void _loadCalendarData() {
@@ -134,15 +152,18 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   // Parse error message to make it more user-friendly
   String _parseErrorMessage(String errorMessage) {
     if (errorMessage.contains('network') || errorMessage.contains('Network')) {
-      return "Network connection error";
-    } else if (errorMessage.contains('timeout') || errorMessage.contains('Timeout')) {
-      return "Request timed out";
-    } else if (errorMessage.contains('calendar service') || errorMessage.contains('calendar')) {
-      return "Calendar service unavailable";
-    } else if (errorMessage.contains('Invalid') || errorMessage.contains('invalid')) {
-      return "Invalid calendar link";
+      return 'Network connection error';
+    } else if (errorMessage.contains('timeout') ||
+        errorMessage.contains('Timeout')) {
+      return 'Request timed out';
+    } else if (errorMessage.contains('calendar service') ||
+        errorMessage.contains('calendar')) {
+      return 'Calendar service unavailable';
+    } else if (errorMessage.contains('Invalid') ||
+        errorMessage.contains('invalid')) {
+      return 'Invalid calendar link';
     } else {
-      return "Unable to load calendar data";
+      return 'Unable to load calendar data';
     }
   }
 
@@ -151,7 +172,11 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     if (_calendarData == null) return [];
 
     // Create a normalized date key (without time component)
-    final normalizedDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final normalizedDate = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
 
     if (_calendarData!.containsKey(normalizedDate)) {
       return _calendarData![normalizedDate]!.schedule;
@@ -164,7 +189,11 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     if (_calendarData == null) return [];
 
     // Create a normalized date key (without time component)
-    final normalizedDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final normalizedDate = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
 
     if (_calendarData!.containsKey(normalizedDate)) {
       return _calendarData![normalizedDate]!.assessments;
@@ -209,7 +238,11 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     if (_menuData == null) return null;
 
     // Create a normalized date key (without time component)
-    final normalizedDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final normalizedDate = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
 
     return _menuData![normalizedDate];
   }
@@ -233,21 +266,29 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     for (final item in scheduleItems) {
       // Compare and update earliest
       if (item.startTime.hour < earliest.hour ||
-          (item.startTime.hour == earliest.hour && item.startTime.minute < earliest.minute)) {
+          (item.startTime.hour == earliest.hour &&
+              item.startTime.minute < earliest.minute)) {
         earliest = item.startTime;
       }
 
       // Compare and update latest
       if (item.endTime.hour > latest.hour ||
-          (item.endTime.hour == latest.hour && item.endTime.minute > latest.minute)) {
+          (item.endTime.hour == latest.hour &&
+              item.endTime.minute > latest.minute)) {
         latest = item.endTime;
       }
     }
 
     // Add padding (1 hour before and after) and update state
     setState(() {
-      _scheduleStartTime = TimeOfDay(hour: (earliest.hour).clamp(0, 23), minute: 0);
-      _scheduleEndTime = TimeOfDay(hour: (latest.hour + 1).clamp(0, 23), minute: 59);
+      _scheduleStartTime = TimeOfDay(
+        hour: (earliest.hour).clamp(0, 23),
+        minute: 0,
+      );
+      _scheduleEndTime = TimeOfDay(
+        hour: (latest.hour + 1).clamp(0, 23),
+        minute: 59,
+      );
     });
   }
 
@@ -264,8 +305,12 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1);
 
       // Keep the same day if possible, otherwise set to last day of month
-      int lastDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
-      int newDay = _selectedDate.day > lastDayOfMonth ? lastDayOfMonth : _selectedDate.day;
+      int lastDayOfMonth =
+          DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
+      int newDay =
+          _selectedDate.day > lastDayOfMonth
+              ? lastDayOfMonth
+              : _selectedDate.day;
       _selectedDate = DateTime(_currentMonth.year, _currentMonth.month, newDay);
     });
   }
@@ -276,8 +321,12 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 1);
 
       // Keep the same day if possible, otherwise set to last day of month
-      int lastDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
-      int newDay = _selectedDate.day > lastDayOfMonth ? lastDayOfMonth : _selectedDate.day;
+      int lastDayOfMonth =
+          DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
+      int newDay =
+          _selectedDate.day > lastDayOfMonth
+              ? lastDayOfMonth
+              : _selectedDate.day;
       _selectedDate = DateTime(_currentMonth.year, _currentMonth.month, newDay);
     });
   }
@@ -306,7 +355,9 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   // Update the selected date (called from calendar widget)
   void _onDateSelected(DateTime date) {
     // If date is different, update it
-    if (date.year != _selectedDate.year || date.month != _selectedDate.month || date.day != _selectedDate.day) {
+    if (date.year != _selectedDate.year ||
+        date.month != _selectedDate.month ||
+        date.day != _selectedDate.day) {
       // Update the state first
       setState(() {
         _selectedDate = date;
@@ -326,6 +377,19 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     }
   }
 
+  void _onTodayPressed() {
+    setState(() {
+      _selectedDate = DateTime.now();
+      _currentMonth = DateTime(_selectedDate.year, _selectedDate.month, 1);
+      _updateScheduleTimeRange();
+
+      // Jump to today's page without animation
+      final todayPageIndex = _getPageIndexFromDate(_selectedDate);
+      _dayPageController.jumpToPage(todayPageIndex);
+    });
+    logger.i("Jumped to today's date: ${_selectedDate.toString()}");
+  }
+
   // Toggle menu section expanded state
   void _toggleMenuSection(int index) {
     setState(() {
@@ -340,7 +404,12 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     // Split by spaces, capitalize each word, rejoin
     return title
         .split(' ')
-        .map((word) => word.isNotEmpty ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}' : '')
+        .map(
+          (word) =>
+              word.isNotEmpty
+                  ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
+                  : '',
+        )
         .join(' ');
   }
 
@@ -360,8 +429,13 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     List<Widget> slots = [];
 
     // Generate time slots from start to end time
-    for (int hour = _scheduleStartTime.hour; hour <= _scheduleEndTime.hour; hour++) {
-      final timeString = hour <= 12 ? (hour == 0 ? '12' : '$hour') : '${hour - 12}';
+    for (
+      int hour = _scheduleStartTime.hour;
+      hour <= _scheduleEndTime.hour;
+      hour++
+    ) {
+      final timeString =
+          hour <= 12 ? (hour == 0 ? '12' : '$hour') : '${hour - 12}';
       final period = hour < 12 ? 'AM' : 'PM';
 
       slots.add(
@@ -373,21 +447,43 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
             children: [
               Flexible(
                 flex: 1,
+                fit: FlexFit.tight,
                 child: Text(
                   timeString,
-                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withAlpha(127)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withAlpha(127),
+                  ),
                 ),
-                fit: FlexFit.tight,
               ),
               Flexible(
                 flex: 2,
+                fit: FlexFit.tight,
                 child: Text(
                   period,
-                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withAlpha(127)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withAlpha(127),
+                  ),
                 ),
-                fit: FlexFit.tight,
               ),
-              Flexible(flex: 15, child: Divider(color: Theme.of(context).colorScheme.onSurface.withAlpha(50))),
+              Container(
+                margin: const EdgeInsets.only(
+                  right: 32,
+                ), // adjust as needed to align with event blocks
+                width:
+                    MediaQuery.of(context).size.width *
+                    0.7, // same as event block width
+                child: Divider(
+                  color: Theme.of(context).colorScheme.onSurface.withAlpha(50),
+                  thickness: 1,
+                  height: 1,
+                ),
+              ),
             ],
           ),
         ),
@@ -413,23 +509,36 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+              Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Theme.of(context).colorScheme.error,
+              ),
               SizedBox(height: 16),
               Text(
-                "Failed to load schedule",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.error),
+                'Failed to load schedule',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.error,
+                ),
               ),
               SizedBox(height: 8),
               Text(
-                _errorMessage ?? "Unknown error occurred",
-                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                _errorMessage ?? 'Unknown error occurred',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: _loadCalendarData,
                 icon: Icon(Icons.refresh, size: 16),
-                label: Text("Retry"),
+                label: Text('Retry'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -447,16 +556,20 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
           height: 150, // Increased from 100 to match container height
           alignment: Alignment.center,
           child: Text(
-            "No schedule for this day",
-            style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurface.withAlpha(150)),
+            'No schedule for this day',
+            style: TextStyle(
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
+            ),
           ),
         ),
       );
     }
 
     // Fixed height approach without clipping
-    const double HOUR_HEIGHT = 57.0;
-    final int totalScheduleHours = _scheduleEndTime.hour - _scheduleStartTime.hour + 1;
+    const double hourHeight = 57.0;
+    final int totalScheduleHours =
+        _scheduleEndTime.hour - _scheduleStartTime.hour + 1;
 
     // Get all time slots first
     List<Widget> timeSlots = _buildTimeSlots();
@@ -467,16 +580,19 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
       physics: NeverScrollableScrollPhysics(),
       children: [
         // Use a container with relative positioning for schedule layout
-        Container(
+        SizedBox(
           width: double.infinity,
           // Set the height to a value that can fit all time slots
-          height: totalScheduleHours * HOUR_HEIGHT + 40, // Add extra padding
+          height: totalScheduleHours * hourHeight + 40, // Add extra padding
           child: Stack(
             fit: StackFit.loose, // Don't constrain children tightly
             clipBehavior: Clip.none, // Don't clip any overflows
             children: [
               // Place time slots in a regular column
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: timeSlots),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: timeSlots,
+              ),
 
               // Add each schedule item with Positioned
               ...scheduleItems.map((item) => _buildScheduleItemWidget(item)),
@@ -494,52 +610,78 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     final scheduleStartMinutes = _scheduleStartTime.hour * 60;
 
     // Constants for layout
-    const double HOUR_HEIGHT = 57; // Height of each hour in the schedule
+    const double hourHeight = 57; // Height of each hour in the schedule
 
     // Calculate top position with offset adjustment
-    final double topPosition = (startMinutes - scheduleStartMinutes) * (HOUR_HEIGHT / 60.0) + 7.5;
+    final double topPosition =
+        (startMinutes - scheduleStartMinutes) * (hourHeight / 60.0) + 7.5;
 
     // Calculate height based on duration, with a larger minimum height
-    final double height = max(item.durationMinutes * (HOUR_HEIGHT / 60.0), 24.0);
+    final double height = max(item.durationMinutes * (hourHeight / 60.0), 24.0);
 
     return Positioned(
       top: topPosition,
-      left: 0, // Align with the start of divider lines
-      right: 0,
+      left: 0.0, // Align with the start of divider lines
+      right: 0.0,
       child: Flex(
         direction: Axis.horizontal,
         children: [
-          Flexible(child: SizedBox(), flex: 3, fit: FlexFit.tight),
+          Flexible(flex: 3, fit: FlexFit.tight, child: SizedBox()),
           Flexible(
             flex: 15,
             fit: FlexFit.tight,
-            child: Container(
-              height: height,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withAlpha(240),
-                border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Text(
-                      item.title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OpenCalendarEvent(item: item),
                     ),
+                  );
+                },
+                child: Container(
+                  width:
+                      MediaQuery.of(context).size.width *
+                      0.7, // 70% of screen width
+                  height: height,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withAlpha(240),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                  const SizedBox(width: 8),
-                  Text(item.timeRange, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onPrimary)),
-                ],
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        item.timeRange,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -549,8 +691,9 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   }
 
   Widget _buildScheduleSection() {
-    const double HOUR_HEIGHT = 57.0;
-    final int totalScheduleHours = _scheduleEndTime.hour - _scheduleStartTime.hour + 1;
+    const double hourHeight = 57.0;
+    final int totalScheduleHours =
+        _scheduleEndTime.hour - _scheduleStartTime.hour + 1;
 
     // Calculate appropriate height - provide more space for error states
     final scheduleItems = _getScheduleForSelectedDate();
@@ -561,7 +704,8 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
     } else if (scheduleItems.isEmpty) {
       containerHeight = 150; // Slightly increased for empty state
     } else {
-      containerHeight = totalScheduleHours * HOUR_HEIGHT + 40; // Normal schedule height
+      containerHeight =
+          totalScheduleHours * hourHeight + 40; // Normal schedule height
     }
 
     return SliverStickyHeader(
@@ -572,12 +716,18 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Schedule", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+            const Text(
+              'Schedule',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+            ),
             Padding(
               padding: const EdgeInsets.only(top: 4.0, bottom: 16.0),
               child: Text(
                 _dayFormatter.format(_selectedDate),
-                style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurface.withAlpha(180)),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Theme.of(context).colorScheme.onSurface.withAlpha(180),
+                ),
               ),
             ),
           ],
@@ -590,7 +740,8 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                height: containerHeight, // Dynamic height based on content and state
+                height:
+                    containerHeight, // Dynamic height based on content and state
                 width: double.infinity,
                 child: PageView.builder(
                   physics: const PageScrollPhysics(),
@@ -622,9 +773,15 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
 
     return SliverStickyHeader(
       header: Container(
-        padding: const EdgeInsets.only(left: 16.0, bottom: 8.0), // Add top padding of 32pts
+        padding: const EdgeInsets.only(
+          left: 16.0,
+          bottom: 8.0,
+        ), // Add top padding of 32pts
         color: Theme.of(context).colorScheme.surface,
-        child: Text("Menu", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+        child: Text(
+          'Menu',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+        ),
       ),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
@@ -645,7 +802,10 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
                 GestureDetector(
                   onTap: () => _toggleMenuSection(index),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12.0,
+                      horizontal: 16.0,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -678,16 +838,25 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
                       children:
                           menuSection.courses.map((course) {
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 12.0, top: 8.0),
+                              padding: const EdgeInsets.only(
+                                bottom: 12.0,
+                                top: 8.0,
+                              ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     _formatSectionTitle(course[0]),
-                                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                   SizedBox(height: 2),
-                                  Text(_formatFoodItems(course[1]), style: TextStyle(fontSize: 12)),
+                                  Text(
+                                    _formatFoodItems(course[1]),
+                                    style: TextStyle(fontSize: 12),
+                                  ),
                                 ],
                               ),
                             );
@@ -717,14 +886,24 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
 
     return SliverStickyHeader(
       header: Container(
-        padding: const EdgeInsets.only(left: 16.0, top: 32.0), // Add top padding of 32pts
+        padding: const EdgeInsets.only(
+          left: 16.0,
+          top: 32.0,
+        ), // Add top padding of 32pts
         color: Theme.of(context).colorScheme.surface,
         child: Row(
           children: [
-            Text("Assessments", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+            Text(
+              'Assessments',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+            ),
             if (_hasDataLoadError) ...[
               SizedBox(width: 8),
-              Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 20),
+              Icon(
+                Icons.error_outline,
+                color: Theme.of(context).colorScheme.error,
+                size: 20,
+              ),
             ],
           ],
         ),
@@ -739,7 +918,10 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
 
               if (_isLoading)
                 const Center(
-                  child: Padding(padding: EdgeInsets.symmetric(vertical: 24.0), child: CircularProgressIndicator()),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24.0),
+                    child: CircularProgressIndicator(),
+                  ),
                 )
               else if (_hasDataLoadError)
                 Center(
@@ -747,10 +929,14 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
                     padding: const EdgeInsets.symmetric(vertical: 24.0),
                     child: Column(
                       children: [
-                        Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+                        Icon(
+                          Icons.error_outline,
+                          size: 48,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                         SizedBox(height: 16),
                         Text(
-                          "Failed to load assessments",
+                          'Failed to load assessments',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -759,10 +945,12 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
                         ),
                         SizedBox(height: 8),
                         Text(
-                          _errorMessage ?? "Unknown error occurred",
+                          _errorMessage ?? 'Unknown error occurred',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -770,10 +958,12 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
                         ElevatedButton.icon(
                           onPressed: _loadCalendarData,
                           icon: Icon(Icons.refresh, size: 16),
-                          label: Text("Retry"),
+                          label: Text('Retry'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                            backgroundColor:
+                                Theme.of(context).colorScheme.primary,
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onPrimary,
                           ),
                         ),
                       ],
@@ -789,15 +979,19 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
                         Icon(
                           Icons.assignment_outlined,
                           size: 48,
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.3),
                         ),
                         SizedBox(height: 16),
                         Text(
-                          "No assessments for this day",
+                          'No assessments for this day',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                         ),
                       ],
@@ -811,11 +1005,16 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
                   itemCount: assessments.length,
                   padding: EdgeInsets.zero, // Remove any padding
                   separatorBuilder:
-                      (context, index) => Divider(height: 1, color: Theme.of(context).colorScheme.tertiary),
+                      (context, index) => Divider(
+                        height: 1,
+                        color: Theme.of(context).colorScheme.tertiary,
+                      ),
                   itemBuilder: (context, index) {
                     final assessment = assessments[index];
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0), // Reduced padding
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8.0,
+                      ), // Reduced padding
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -823,12 +1022,19 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(assessment.title, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                Text(
+                                  assessment.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                                 Text(
                                   assessment.className,
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: Theme.of(context).colorScheme.onSurface.withAlpha(180),
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface.withAlpha(180),
                                   ),
                                 ),
                               ],
@@ -849,7 +1055,8 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final assessments = _getAssessmentsForSelectedDate();
-    final bool hasAssessments = assessments.isNotEmpty || _isLoading || _hasDataLoadError;
+    final bool hasAssessments =
+        assessments.isNotEmpty || _isLoading || _hasDataLoadError;
     final hasMenu = _getMenuForSelectedDate()?.isNotEmpty ?? false;
 
     return Scaffold(
@@ -887,7 +1094,9 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
             });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Failed to refresh: ${_parseErrorMessage(error.toString())}'),
+                content: Text(
+                  'Failed to refresh: ${_parseErrorMessage(error.toString())}',
+                ),
                 backgroundColor: Theme.of(context).colorScheme.error,
                 action: SnackBarAction(
                   label: 'Retry',
@@ -913,6 +1122,7 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
               onDateSelected: _onDateSelected,
               onPreviousMonth: _previousMonth,
               onNextMonth: _nextMonth,
+              onTodayPressed: _onTodayPressed,
               scrollController: _scrollController,
             ),
 
@@ -929,7 +1139,10 @@ class _CalendarPageState extends State<CalendarPage> with TickerProviderStateMix
             SliverFillRemaining(
               hasScrollBody: false,
               fillOverscroll: true,
-              child: Container(height: MediaQuery.of(context).size.height * 0.6, color: Colors.transparent),
+              child: Container(
+                height: MediaQuery.of(context).size.height * 0.6,
+                color: Colors.transparent,
+              ),
             ),
           ],
         ),
@@ -945,12 +1158,12 @@ class CalendarMonthProvider extends InheritedWidget {
   final Function(DateTime) onDateSelected;
 
   const CalendarMonthProvider({
-    Key? key,
+    super.key,
     required this.currentMonth,
     required this.selectedDate,
     required this.onDateSelected,
-    required Widget child,
-  }) : super(key: key, child: child);
+    required super.child,
+  });
 
   static CalendarMonthProvider? of(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<CalendarMonthProvider>();
@@ -958,6 +1171,7 @@ class CalendarMonthProvider extends InheritedWidget {
 
   @override
   bool updateShouldNotify(CalendarMonthProvider oldWidget) {
-    return currentMonth != oldWidget.currentMonth || selectedDate != oldWidget.selectedDate;
+    return currentMonth != oldWidget.currentMonth ||
+        selectedDate != oldWidget.selectedDate;
   }
 }

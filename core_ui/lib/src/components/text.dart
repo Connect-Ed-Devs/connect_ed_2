@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+/// A customizable animated text widget that displays a list of strings with a typewriter effect.
+/// Will display each string and loop back to the beginning of the given list
 class TypewriterText extends StatefulWidget {
   final List<String> texts;
   final TextStyle? textStyle;

@@ -58,9 +58,7 @@ class _TeamsSearchPageState extends State<TeamsSearchPage> {
       }
 
       // If no cached data, fetch fresh data
-      if (cachedStandings == null) {
-        cachedStandings = await standingsManager.fetchData();
-      }
+      cachedStandings ??= await standingsManager.fetchData();
 
       // Process the teams data
       setState(() {
@@ -86,22 +84,20 @@ class _TeamsSearchPageState extends State<TeamsSearchPage> {
     if (_standingsData != null) {
       _standingsData!.forEach((leagueCode, standingsList) {
         // Add team if it exists
-        if (standingsList.applebyTeam != null) {
-          // Use sport name instead of school name
-          final sportName = standingsList.sportsName;
-          Team team = standingsList.applebyTeam!;
+        // Use sport name instead of school name
+        final sportName = standingsList.sportsName;
+        Team team = standingsList.applebyTeam;
 
-          // Create new team with sport name instead of "Appleby College"
-          _allTeams.add(
-            Team(
-              name: sportName,
-              rank: team.rank,
-              record: team.record,
-              sportIcon: team.sportIcon,
-              leagueCode: leagueCode,
-            ),
-          );
-        }
+        // Create new team with sport name instead of "Appleby College"
+        _allTeams.add(
+          Team(
+            name: sportName,
+            rank: team.rank,
+            record: team.record,
+            sportIcon: team.sportIcon,
+            leagueCode: leagueCode,
+          ),
+        );
       });
 
       // Sort teams by rank (best performing first)
@@ -131,18 +127,24 @@ class _TeamsSearchPageState extends State<TeamsSearchPage> {
     });
   }
 
-  Widget _buildNormalFlexibleSpace(BuildContext context, ThemeData theme, {Key? key}) {
-    const String pageTitle = "Teams";
+  Widget _buildNormalFlexibleSpace(
+    BuildContext context,
+    ThemeData theme, {
+    Key? key,
+  }) {
+    const String pageTitle = 'Teams';
     return LayoutBuilder(
       key: key,
       builder: (BuildContext context, BoxConstraints constraints) {
         double progress = 1.0;
         double height = constraints.maxHeight;
-        final double collapsedHeight = MediaQuery.of(context).padding.top + 35.0;
+        final double collapsedHeight =
+            MediaQuery.of(context).padding.top + 35.0;
         final double expandedAppBarHeight = 75.0;
 
         if (height > collapsedHeight) {
-          final double maxHeight = expandedAppBarHeight + MediaQuery.of(context).padding.top;
+          final double maxHeight =
+              expandedAppBarHeight + MediaQuery.of(context).padding.top;
           progress = (maxHeight - height) / (maxHeight - collapsedHeight);
         }
         progress = progress.clamp(0.0, 1.0);
@@ -166,7 +168,11 @@ class _TeamsSearchPageState extends State<TeamsSearchPage> {
                     children: [
                       // Back button
                       IconButton(
-                        icon: Icon(Icons.arrow_back_ios, size: 24, color: theme.colorScheme.onSurface),
+                        icon: Icon(
+                          Icons.arrow_back_ios,
+                          size: 24,
+                          color: theme.colorScheme.onSurface,
+                        ),
                         onPressed: () => Navigator.of(context).pop(),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -184,7 +190,11 @@ class _TeamsSearchPageState extends State<TeamsSearchPage> {
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.search, size: 24, color: theme.colorScheme.onSurface),
+                        icon: Icon(
+                          Icons.search,
+                          size: 24,
+                          color: theme.colorScheme.onSurface,
+                        ),
                         onPressed: _toggleSearch,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -221,12 +231,15 @@ class _TeamsSearchPageState extends State<TeamsSearchPage> {
                         flex: 5,
                         fit: FlexFit.tight,
                         child: Text(
-                          "Teams",
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          'Teams',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
-                      Flexible(child: SizedBox.shrink(), fit: FlexFit.tight),
+                      Flexible(fit: FlexFit.tight, child: SizedBox.shrink()),
                     ],
                   ),
                 ),
@@ -239,17 +252,23 @@ class _TeamsSearchPageState extends State<TeamsSearchPage> {
   }
 
   // Method to build the flexible space for search mode
-  Widget _buildSearchFlexibleSpace(BuildContext context, ThemeData theme, {Key? key}) {
+  Widget _buildSearchFlexibleSpace(
+    BuildContext context,
+    ThemeData theme, {
+    Key? key,
+  }) {
     return LayoutBuilder(
       key: key,
       builder: (BuildContext context, BoxConstraints constraints) {
         double progress = 1.0;
         double height = constraints.maxHeight;
-        final double collapsedHeight = MediaQuery.of(context).padding.top + 35.0;
+        final double collapsedHeight =
+            MediaQuery.of(context).padding.top + 35.0;
         final double expandedAppBarHeight = 75.0;
 
         if (height > collapsedHeight) {
-          final double maxHeight = expandedAppBarHeight + MediaQuery.of(context).padding.top;
+          final double maxHeight =
+              expandedAppBarHeight + MediaQuery.of(context).padding.top;
           progress = (maxHeight - height) / (maxHeight - collapsedHeight);
         }
         progress = progress.clamp(0.0, 1.0);
@@ -273,7 +292,11 @@ class _TeamsSearchPageState extends State<TeamsSearchPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       IconButton(
-                        icon: Icon(Icons.arrow_back_ios, size: 24, color: theme.colorScheme.onSurface),
+                        icon: Icon(
+                          Icons.arrow_back_ios,
+                          size: 24,
+                          color: theme.colorScheme.onSurface,
+                        ),
                         onPressed: () => Navigator.of(context).pop(),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -285,16 +308,30 @@ class _TeamsSearchPageState extends State<TeamsSearchPage> {
                           focusNode: _searchFocusNode,
                           autofocus: true,
                           decoration: InputDecoration(
-                            hintText: "Search teams...",
+                            hintText: 'Search teams...',
                             border: InputBorder.none,
-                            hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6)),
-                            contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 0),
+                            hintStyle: TextStyle(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 0,
+                              horizontal: 0,
+                            ),
                           ),
-                          style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 16),
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.close, size: 24, color: theme.colorScheme.onSurface),
+                        icon: Icon(
+                          Icons.close,
+                          size: 24,
+                          color: theme.colorScheme.onSurface,
+                        ),
                         onPressed: _toggleSearch,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -331,14 +368,19 @@ class _TeamsSearchPageState extends State<TeamsSearchPage> {
                         flex: 5,
                         fit: FlexFit.tight,
                         child: Text(
-                          _searchController.text.isEmpty ? "Search" : ' "${_searchController.text}" in teams',
+                          _searchController.text.isEmpty
+                              ? 'Search'
+                              : ' "${_searchController.text}" in teams',
                           maxLines: 1,
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Flexible(child: SizedBox.shrink(), fit: FlexFit.tight),
+                      Flexible(fit: FlexFit.tight, child: SizedBox.shrink()),
                     ],
                   ),
                 ),
@@ -373,25 +415,39 @@ class _TeamsSearchPageState extends State<TeamsSearchPage> {
               },
               child:
                   _isSearching
-                      ? _buildSearchFlexibleSpace(context, theme, key: const ValueKey('search_flexible_space'))
-                      : _buildNormalFlexibleSpace(context, theme, key: const ValueKey('normal_flexible_space')),
+                      ? _buildSearchFlexibleSpace(
+                        context,
+                        theme,
+                        key: const ValueKey('search_flexible_space'),
+                      )
+                      : _buildNormalFlexibleSpace(
+                        context,
+                        theme,
+                        key: const ValueKey('normal_flexible_space'),
+                      ),
             ),
           ),
           SliverPadding(
             padding: const EdgeInsets.all(16.0),
             sliver:
                 _isLoading
-                    ? SliverFillRemaining(child: Center(child: CircularProgressIndicator()))
+                    ? SliverFillRemaining(
+                      child: Center(child: CircularProgressIndicator()),
+                    )
                     : _hasLoadError
                     ? SliverFillRemaining(
                       child: Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+                            Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: theme.colorScheme.error,
+                            ),
                             SizedBox(height: 16),
                             Text(
-                              "Failed to load teams",
+                              'Failed to load teams',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
@@ -399,7 +455,10 @@ class _TeamsSearchPageState extends State<TeamsSearchPage> {
                               ),
                             ),
                             SizedBox(height: 8),
-                            ElevatedButton(onPressed: _loadTeamsData, child: Text("Retry")),
+                            ElevatedButton(
+                              onPressed: _loadTeamsData,
+                              child: Text('Retry'),
+                            ),
                           ],
                         ),
                       ),
@@ -408,26 +467,37 @@ class _TeamsSearchPageState extends State<TeamsSearchPage> {
                     ? SliverFillRemaining(
                       child: Center(
                         child: Text(
-                          _searchController.text.isNotEmpty ? "No teams match your search." : "No teams available.",
-                          style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurface.withOpacity(0.6)),
+                          _searchController.text.isNotEmpty
+                              ? 'No teams match your search.'
+                              : 'No teams available.',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.6,
+                            ),
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
                     )
                     : SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16.0,
-                        mainAxisSpacing: 16.0,
-                        mainAxisExtent: 190.0,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16.0,
+                            mainAxisSpacing: 16.0,
+                            mainAxisExtent: 190.0,
+                          ),
                       delegate: SliverChildBuilderDelegate(
-                        (context, index) => TeamWidget(team: _filteredTeams[index]),
+                        (context, index) =>
+                            TeamWidget(team: _filteredTeams[index]),
                         childCount: _filteredTeams.length,
                       ),
                     ),
           ),
-          SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.bottom + 24)),
+          SliverToBoxAdapter(
+            child: SizedBox(height: MediaQuery.of(context).padding.bottom + 24),
+          ),
         ],
       ),
     );

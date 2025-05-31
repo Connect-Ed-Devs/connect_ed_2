@@ -8,16 +8,17 @@ CacheManager gamesManager = GamesCacheManager();
 
 class GamesCacheManager extends CacheManager {
   GamesCacheManager({
-    String cacheKey = 'games_data',
-    Duration smallThreshold = const Duration(minutes: 10),
-    Duration largeThreshold = const Duration(days: 1),
-  }) : super(cacheKey: cacheKey, smallThreshold: smallThreshold, largeThreshold: largeThreshold);
+    super.cacheKey = 'games_data',
+    super.smallThreshold = const Duration(minutes: 10),
+    super.largeThreshold = const Duration(days: 1),
+  });
 
   @override
   Future<Map<String, Game>> fetchData() async {
     try {
       // Get all documents from Games collection without composite index
-      final QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('Games').get();
+      final QuerySnapshot snapshot =
+          await FirebaseFirestore.instance.collection('Games').get();
 
       final Map<String, Game> games = {};
 
@@ -34,7 +35,8 @@ class GamesCacheManager extends CacheManager {
           try {
             dateTime = DateTime.parse(data['game_date'].toString());
           } catch (e) {
-            dateTime = DateTime.now(); // Default to current time if parsing fails
+            dateTime =
+                DateTime.now(); // Default to current time if parsing fails
           }
         }
 
@@ -114,7 +116,8 @@ class GamesCacheManager extends CacheManager {
   Map<String, Game> decodeData(String data) {
     if (data.isEmpty) return {};
 
-    final Map<String, dynamic> decodedMap = jsonDecode(data) as Map<String, dynamic>;
+    final Map<String, dynamic> decodedMap =
+        jsonDecode(data) as Map<String, dynamic>;
     final Map<String, Game> games = {};
 
     decodedMap.forEach((gameId, gameData) {
@@ -125,7 +128,9 @@ class GamesCacheManager extends CacheManager {
         awayTeam: gameData['awayTeam'] as String? ?? '',
         awayabbr: gameData['awayabbr'] as String? ?? '',
         awayLogo: gameData['awayLogo'] as String? ?? '',
-        date: DateTime.parse(gameData['date'] as String? ?? DateTime.now().toIso8601String()),
+        date: DateTime.parse(
+          gameData['date'] as String? ?? DateTime.now().toIso8601String(),
+        ),
         time: gameData['time'] as String? ?? '',
         homeScore: gameData['homeScore'] as String? ?? '',
         awayScore: gameData['awayScore'] as String? ?? '',

@@ -11,16 +11,17 @@ CacheManager standingsManager = StandingsCacheManager();
 
 class StandingsCacheManager extends CacheManager {
   StandingsCacheManager({
-    String cacheKey = 'standings_data',
-    Duration smallThreshold = const Duration(minutes: 10),
-    Duration largeThreshold = const Duration(days: 1),
-  }) : super(cacheKey: cacheKey, smallThreshold: smallThreshold, largeThreshold: largeThreshold);
+    super.cacheKey = 'standings_data',
+    super.smallThreshold = const Duration(minutes: 10),
+    super.largeThreshold = const Duration(days: 1),
+  });
 
   @override
   Future<Map<String, StandingsList>> fetchData() async {
     try {
       // Get all documents from Sports collection without using complex queries
-      final QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('Sports').get();
+      final QuerySnapshot snapshot =
+          await FirebaseFirestore.instance.collection('Sports').get();
 
       final Map<String, StandingsList> sportsStandings = {};
 
@@ -35,7 +36,8 @@ class StandingsCacheManager extends CacheManager {
         IconData sportIcon = _getSportIcon(sportsName);
 
         // Parse standings data
-        final List<dynamic> standingsData = (data['standings_data'] as List<dynamic>?) ?? [];
+        final List<dynamic> standingsData =
+            (data['standings_data'] as List<dynamic>?) ?? [];
         print(standingsData);
         final List<StandingsItem> standingsItems = [];
 
@@ -43,7 +45,7 @@ class StandingsCacheManager extends CacheManager {
         StandingsItem? applebyStanding;
         Team? applebyTeam;
         int applebyRank = 0;
-        String applebyRecord = "0-0-0";
+        String applebyRecord = '0-0-0';
 
         for (var i = 0; i < standingsData.length; i++) {
           final item = standingsData[i];
@@ -52,9 +54,11 @@ class StandingsCacheManager extends CacheManager {
             final String teamName = item['teamName']?.toString() ?? '';
             final String teamAbbr = item['team_abbr']?.toString() ?? '';
             final int wins = int.tryParse(item['wins']?.toString() ?? '0') ?? 0;
-            final int losses = int.tryParse(item['losses']?.toString() ?? '0') ?? 0;
+            final int losses =
+                int.tryParse(item['losses']?.toString() ?? '0') ?? 0;
             final int ties = int.tryParse(item['ties']?.toString() ?? '0') ?? 0;
-            final int points = int.tryParse(item['points']?.toString() ?? '0') ?? 0;
+            final int points =
+                int.tryParse(item['points']?.toString() ?? '0') ?? 0;
             final int rank = i + 1; // Rank based on position in list
             final String record = '$wins-$losses-$ties';
 
@@ -86,11 +90,11 @@ class StandingsCacheManager extends CacheManager {
 
         // Create Appleby team object even if not found in standings
         applebyTeam = Team(
-          name: "Appleby College",
+          name: 'Appleby College',
           rank: applebyStanding?.rank ?? applebyRank,
           record:
               applebyStanding != null
-                  ? "${applebyStanding.wins}-${applebyStanding.losses}-${applebyStanding.ties}"
+                  ? '${applebyStanding.wins}-${applebyStanding.losses}-${applebyStanding.ties}'
                   : applebyRecord,
           sportIcon: sportIcon,
           leagueCode: leagueCode,
@@ -128,7 +132,8 @@ class StandingsCacheManager extends CacheManager {
     if (name.contains('cricket')) return Icons.sports_cricket;
     if (name.contains('rugby')) return Icons.sports_rugby;
     if (name.contains('handball')) return Icons.sports_handball;
-    if (name.contains('badminton') || name.contains('squash')) return Icons.sports_tennis;
+    if (name.contains('badminton') || name.contains('squash'))
+      return Icons.sports_tennis;
 
     // Default icon for other sports
     return Icons.emoji_events;
@@ -136,7 +141,8 @@ class StandingsCacheManager extends CacheManager {
 
   @override
   String encodeData(dynamic data) {
-    final Map<String, StandingsList> sportsStandings = data as Map<String, StandingsList>;
+    final Map<String, StandingsList> sportsStandings =
+        data as Map<String, StandingsList>;
 
     // Convert StandingsList objects to serializable maps
     final Map<String, dynamic> encodedMap = {};
@@ -152,7 +158,8 @@ class StandingsCacheManager extends CacheManager {
   Map<String, StandingsList> decodeData(String data) {
     if (data.isEmpty) return {};
 
-    final Map<String, dynamic> decodedMap = jsonDecode(data) as Map<String, dynamic>;
+    final Map<String, dynamic> decodedMap =
+        jsonDecode(data) as Map<String, dynamic>;
     final Map<String, StandingsList> sportsStandings = {};
 
     decodedMap.forEach((leagueCode, standingsData) {

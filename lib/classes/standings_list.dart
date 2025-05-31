@@ -44,7 +44,10 @@ class StandingsList {
       record: teamData['record'] as String? ?? '0-0-0',
       sportIcon:
           teamData['sportIconCodePoint'] != null
-              ? IconData(teamData['sportIconCodePoint'] as int, fontFamily: 'MaterialIcons')
+              ? IconData(
+                teamData['sportIconCodePoint'] as int,
+                fontFamily: 'MaterialIcons',
+              )
               : Icons.sports,
       leagueCode: teamData['leagueCode'] as String? ?? '',
     );

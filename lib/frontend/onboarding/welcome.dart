@@ -1,6 +1,5 @@
-import 'package:connect_ed_2/frontend/components/button.dart';
-import 'package:connect_ed_2/frontend/components/text.dart';
-import 'package:connect_ed_2/frontend/onboarding/link.dart';
+import 'package:core_ui/core_ui.dart';
+import 'package:connect_ed_2/frontend/onboarding/setup_link.dart';
 import 'package:flutter/material.dart';
 
 class WelcomePage extends StatefulWidget {
@@ -123,7 +122,7 @@ class _WelcomePageState extends State<WelcomePage>
                     height: 128,
                     child: Center(
                       child: Image(
-                        image: AssetImage("assets/ConnectEd Transparent.png"),
+                        image: AssetImage('assets/ConnectEd Transparent.png'),
                         width: screenHeight * 0.25,
                         height: screenHeight * 0.25,
                       ),
@@ -145,12 +144,12 @@ class _WelcomePageState extends State<WelcomePage>
                 children: [
                   // Welcome message
                   Text(
-                    "Welcome to Connect-Ed",
+                    'Welcome to Connect-Ed',
                     style: TextStyle(
                       fontSize: 36,
                       fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurface,
-                      fontFamily: "Montserrat",
+                      fontFamily: 'Montserrat',
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -203,8 +202,8 @@ class _WelcomePageState extends State<WelcomePage>
                   SizedBox(
                     width: double.infinity,
                     height: 56,
-                    child: AestheticButton(
-                      text: "Get Started",
+                    child: OpacityBlockButton(
+                      text: 'Get Started',
                       onPressed: () {
                         Navigator.push(
                           context,

@@ -1,7 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:carousel_slider/carousel_slider.dart';
-import 'package:connect_ed_2/frontend/onboarding/finish.dart';
+import 'package:connect_ed_2/frontend/onboarding/finish_onboarding.dart';
 import 'package:connect_ed_2/requests/url_check.dart';
 import 'package:connect_ed_2/main.dart'; // Import for global prefs
 import 'package:flutter/material.dart';
@@ -15,7 +15,7 @@ class LinkPage extends StatefulWidget {
 }
 
 class _LinkPageState extends State<LinkPage> {
-  String link = "";
+  String link = '';
   final PageController _pageController = PageController();
   int _currentStep = 0;
 
@@ -27,10 +27,10 @@ class _LinkPageState extends State<LinkPage> {
   ];
 
   final List<String> _stepDescriptions = [
-    "Log into your school portal account",
-    "Navigate to the calendar page using the menu",
-    "Look for calendar export or WebCal feed options",
-    "Click My Calendars and the link will be processed",
+    'Log into your school portal account',
+    'Navigate to the calendar page using the menu',
+    'Look for calendar export or WebCal feed options',
+    'Click My Calendars and the link will be processed',
   ];
 
   @override
@@ -89,7 +89,7 @@ class _LinkPageState extends State<LinkPage> {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -159,7 +159,9 @@ class _LinkPageState extends State<LinkPage> {
                           color:
                               _currentStep == index
                                   ? theme.colorScheme.primary
-                                  : theme.colorScheme.primary.withOpacity(0.3),
+                                  : theme.colorScheme.primary.withValues(
+                                    alpha: 0.3,
+                                  ),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -176,7 +178,9 @@ class _LinkPageState extends State<LinkPage> {
                         color: theme.colorScheme.surfaceContainer,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.1,
+                          ),
                         ),
                       ),
                       child: Text(
@@ -246,7 +250,7 @@ class _LinkPageState extends State<LinkPage> {
                     style: TextStyle(
                       fontSize: 15,
                       fontFamily: 'Montserrat',
-                      color: textColor.withOpacity(0.8),
+                      color: textColor.withValues(alpha: 0.8),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -286,7 +290,7 @@ class _LinkPageState extends State<LinkPage> {
                       ),
                       labelText: 'Calendar Link',
                       labelStyle: TextStyle(
-                        color: textColor.withOpacity(0.6),
+                        color: textColor.withValues(alpha: 0.6),
                         fontFamily: 'Montserrat',
                         fontWeight: FontWeight.w500,
                       ),
@@ -344,16 +348,16 @@ class _LinkPageState extends State<LinkPage> {
         return AlertDialog(
           backgroundColor: theme.colorScheme.surface,
           title: Text(
-            "Validating link",
+            'Validating link',
             style: TextStyle(
-              fontFamily: "Montserrat",
+              fontFamily: 'Montserrat',
               color: theme.colorScheme.onSurface,
             ),
           ),
           content: Text(
-            "Checking link validity please wait...",
+            'Checking link validity please wait...',
             style: TextStyle(
-              fontFamily: "Montserrat",
+              fontFamily: 'Montserrat',
               color: theme.colorScheme.onSurface,
             ),
           ),
@@ -377,16 +381,16 @@ class _LinkPageState extends State<LinkPage> {
       } else {
         _showErrorDialog(
           context,
-          "Invalid Link",
-          "The link you entered is invalid. Please try again.",
+          'Invalid Link',
+          'The link you entered is invalid. Please try again.',
         );
       }
     } catch (e) {
       Navigator.of(context).pop(); // Close loading dialog
       _showErrorDialog(
         context,
-        "Error",
-        "An error occurred while validating the link: ${e.toString()}",
+        'Error',
+        'An error occurred while validating the link: ${e.toString()}',
       );
     }
   }
@@ -402,14 +406,14 @@ class _LinkPageState extends State<LinkPage> {
           title: Text(
             title,
             style: TextStyle(
-              fontFamily: "Montserrat",
+              fontFamily: 'Montserrat',
               color: theme.colorScheme.onSurface,
             ),
           ),
           content: Text(
             message,
             style: TextStyle(
-              fontFamily: "Montserrat",
+              fontFamily: 'Montserrat',
               color: theme.colorScheme.onSurface,
             ),
           ),
@@ -419,9 +423,9 @@ class _LinkPageState extends State<LinkPage> {
                 Navigator.of(context).pop();
               },
               child: Text(
-                "OK",
+                'OK',
                 style: TextStyle(
-                  fontFamily: "Montserrat",
+                  fontFamily: 'Montserrat',
                   color: theme.colorScheme.primary,
                 ),
               ),
@@ -450,7 +454,7 @@ class _WebViewPageState extends State<WebViewPage> {
         WebViewController()
           ..setJavaScriptMode(JavaScriptMode.unrestricted)
           ..setUserAgent(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
           )
           ..addJavaScriptChannel(
             'Print',
@@ -481,7 +485,7 @@ class _WebViewPageState extends State<WebViewPage> {
         foregroundColor: theme.colorScheme.onSurface,
         titleTextStyle: TextStyle(
           color: theme.colorScheme.onSurface,
-          fontFamily: "Montserrat",
+          fontFamily: 'Montserrat',
           fontWeight: FontWeight.w600,
           fontSize: 24,
         ),

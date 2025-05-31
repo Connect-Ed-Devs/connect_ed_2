@@ -1,7 +1,6 @@
-import 'package:connect_ed_2/frontend/components/button.dart';
-import 'package:connect_ed_2/frontend/components/text.dart';
 import 'package:flutter/material.dart';
 import 'package:connect_ed_2/main.dart';
+import 'package:core_ui/core_ui.dart';
 
 class FinishPage extends StatelessWidget {
   const FinishPage({super.key});
@@ -18,12 +17,11 @@ class FinishPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Success icon
               Container(
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -32,30 +30,22 @@ class FinishPage extends StatelessWidget {
                   color: theme.colorScheme.primary,
                 ),
               ),
-
               const SizedBox(height: 48),
-
-              // Success message
               Text(
                 "You're All Set!",
                 style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.w600,
                   color: theme.colorScheme.onSurface,
-                  fontFamily: "Montserrat",
+                  fontFamily: 'Montserrat',
                 ),
                 textAlign: TextAlign.center,
               ),
-
               const SizedBox(height: 16),
-
               Container(
                 alignment: Alignment.center,
-                // Constrain the width to a percentage of the screen width
                 constraints: BoxConstraints(
-                  maxWidth:
-                      MediaQuery.of(context).size.width *
-                      0.9, // 90% of screen width
+                  maxWidth: MediaQuery.of(context).size.width * 0.90,
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
@@ -73,34 +63,8 @@ class FinishPage extends StatelessWidget {
                   ),
                 ),
               ),
-
               const SizedBox(height: 64),
-
-              // Continue to home button
-              // SizedBox(
-              //   width: double.infinity,
-              //   height: 56,
-              //   child: ElevatedButton(
-              //     onPressed: () {
-              //       // Navigate to main app and clear navigation stack
-              //       prefs.setString('setup', 'complete');
-              //       Navigator.of(
-              //         context,
-              //       ).pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const MyHomePage()), (route) => false);
-              //     },
-              //     style: ElevatedButton.styleFrom(
-              //       backgroundColor: theme.colorScheme.primary,
-              //       foregroundColor: theme.colorScheme.onPrimary,
-              //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              //       elevation: 2,
-              //     ),
-              //     child: Text(
-              //       "Get Started",
-              //       style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, fontFamily: "Montserrat"),
-              //     ),
-              //   ),
-              // ),
-              AestheticButton(
+              OpacityBlockButton(
                 text: "Let's Go",
                 onPressed: () {
                   prefs.setString('setup', 'complete');

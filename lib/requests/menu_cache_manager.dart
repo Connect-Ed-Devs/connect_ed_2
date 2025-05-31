@@ -7,10 +7,10 @@ CacheManager menuManager = MenuCacheManager();
 
 class MenuCacheManager extends CacheManager {
   MenuCacheManager({
-    String cacheKey = 'menu_data',
-    Duration smallThreshold = const Duration(minutes: 5),
-    Duration largeThreshold = const Duration(days: 7),
-  }) : super(cacheKey: cacheKey, smallThreshold: smallThreshold, largeThreshold: largeThreshold);
+    super.cacheKey = 'menu_data',
+    super.smallThreshold,
+    super.largeThreshold = const Duration(days: 7),
+  });
 
   @override
   Future<Map<DateTime, List<MenuSection>>> fetchData() async {
@@ -28,7 +28,10 @@ class MenuCacheManager extends CacheManager {
         final coursesRaw = meal['courses'] as List<dynamic>? ?? [];
         List<List<String>> courses =
             coursesRaw.map<List<String>>((c) {
-              return [c['courseType'] as String? ?? '', c['foodItem'] as String? ?? ''];
+              return [
+                c['courseType'] as String? ?? '',
+                c['foodItem'] as String? ?? '',
+              ];
             }).toList();
         sections.add(MenuSection(sectionTitle: title, courses: courses));
       }
@@ -44,7 +47,11 @@ class MenuCacheManager extends CacheManager {
     final out = <String, dynamic>{};
     map.forEach((date, sections) {
       out[date.toIso8601String()] =
-          sections.map((s) => {'sectionTitle': s.sectionTitle, 'courses': s.courses}).toList();
+          sections
+              .map(
+                (s) => {'sectionTitle': s.sectionTitle, 'courses': s.courses},
+              )
+              .toList();
     });
     return out.isEmpty ? '' : jsonEncode(out);
   }

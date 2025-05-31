@@ -32,7 +32,7 @@ class _GamePageState extends State<GamePage> {
   bool _hasStandingsError = false;
   List<Game> _upcomingGames = [];
   List<StandingsItem> _standingsData = [];
-  String _sportName = "";
+  String _sportName = '';
 
   @override
   void initState() {
@@ -58,9 +58,7 @@ class _GamePageState extends State<GamePage> {
       }
 
       // If no cached data, fetch fresh
-      if (cachedGames == null) {
-        cachedGames = await gamesManager.fetchData();
-      }
+      cachedGames ??= await gamesManager.fetchData();
 
       // Filter games by same sport and upcoming dates
       final now = DateTime.now();
@@ -69,7 +67,8 @@ class _GamePageState extends State<GamePage> {
               .where(
                 (game) =>
                     game.sportsName == widget.game.sportsName &&
-                    (game.date.isAfter(now) || (game.homeScore == '-' && game.awayScore == '-')),
+                    (game.date.isAfter(now) ||
+                        (game.homeScore == '-' && game.awayScore == '-')),
               )
               .toList() ??
           [];
@@ -123,7 +122,9 @@ class _GamePageState extends State<GamePage> {
       if (cachedStandings == null) {
         print('Fetching fresh standings data from network');
         cachedStandings = await standingsManager.fetchData();
-        print('Fresh standings data fetched: ${cachedStandings?.length} league(s)');
+        print(
+          'Fresh standings data fetched: ${cachedStandings?.length} league(s)',
+        );
         print('Available leagues: ${cachedStandings?.keys.join(', ')}');
       }
 
@@ -136,7 +137,9 @@ class _GamePageState extends State<GamePage> {
 
         final standingsList = cachedStandings[leagueCode];
         if (standingsList != null) {
-          print('StandingsList for $leagueCode contains ${standingsList.standings.length} team(s)');
+          print(
+            'StandingsList for $leagueCode contains ${standingsList.standings.length} team(s)',
+          );
 
           setState(() {
             _standingsData = standingsList.standings;
@@ -152,7 +155,9 @@ class _GamePageState extends State<GamePage> {
         }
       } else {
         print('ERROR: League code $leagueCode not found in standings data');
-        print('Available leagues: ${cachedStandings?.keys.join(', ') ?? 'none'}');
+        print(
+          'Available leagues: ${cachedStandings?.keys.join(', ') ?? 'none'}',
+        );
 
         setState(() {
           _isLoadingStandings = false;
@@ -177,12 +182,20 @@ class _GamePageState extends State<GamePage> {
   // Helper method to format time by removing AM/PM
   String _formatTime(String time) {
     // Simply remove AM/PM from the time string
-    return time.replaceAll('AM', '').replaceAll('PM', '').replaceAll('am', '').replaceAll('pm', '').trim();
+    return time
+        .replaceAll('AM', '')
+        .replaceAll('PM', '')
+        .replaceAll('am', '')
+        .replaceAll('pm', '')
+        .trim();
   }
 
   Widget _buildUpcomingGamesContent() {
     if (_isLoadingGames) {
-      return Container(height: 190, child: Center(child: CircularProgressIndicator()));
+      return SizedBox(
+        height: 190,
+        child: Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (_hasGamesError) {
@@ -193,10 +206,14 @@ class _GamePageState extends State<GamePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 36),
+              Icon(
+                Icons.error_outline,
+                color: Theme.of(context).colorScheme.error,
+                size: 36,
+              ),
               SizedBox(height: 8),
               Text(
-                "Failed to load upcoming games",
+                'Failed to load upcoming games',
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
                 textAlign: TextAlign.center,
               ),
@@ -212,25 +229,30 @@ class _GamePageState extends State<GamePage> {
         padding: EdgeInsets.all(16),
         child: Center(
           child: Text(
-            "No upcoming games scheduled",
+            'No upcoming games scheduled',
             style: TextStyle(
               fontSize: 16,
               fontStyle: FontStyle.italic,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ),
       );
     }
 
-    return Container(
+    return SizedBox(
       height: 190,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         itemCount: _upcomingGames.length,
         itemBuilder: (context, index) {
-          return Padding(padding: const EdgeInsets.only(right: 16), child: GameWidget(game: _upcomingGames[index]));
+          return Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: GameWidget(game: _upcomingGames[index]),
+          );
         },
       ),
     );
@@ -238,7 +260,10 @@ class _GamePageState extends State<GamePage> {
 
   Widget _buildStandingsContent() {
     if (_isLoadingStandings) {
-      return Container(height: 200, child: Center(child: CircularProgressIndicator()));
+      return SizedBox(
+        height: 200,
+        child: Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (_hasStandingsError) {
@@ -249,10 +274,14 @@ class _GamePageState extends State<GamePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 36),
+              Icon(
+                Icons.error_outline,
+                color: Theme.of(context).colorScheme.error,
+                size: 36,
+              ),
               SizedBox(height: 8),
               Text(
-                "Failed to load standings data",
+                'Failed to load standings data',
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
                 textAlign: TextAlign.center,
               ),
@@ -268,11 +297,13 @@ class _GamePageState extends State<GamePage> {
         padding: EdgeInsets.all(16),
         child: Center(
           child: Text(
-            "No standings data available",
+            'No standings data available',
             style: TextStyle(
               fontSize: 16,
               fontStyle: FontStyle.italic,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ),
@@ -294,7 +325,10 @@ class _GamePageState extends State<GamePage> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          CEAppBar(title: "${widget.game.homeabbr} v ${widget.game.awayabbr}", showBackButton: true),
+          CEAppBar(
+            title: '${widget.game.homeabbr} v ${widget.game.awayabbr}',
+            showBackButton: true,
+          ),
           SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -303,9 +337,13 @@ class _GamePageState extends State<GamePage> {
                   padding: const EdgeInsets.only(left: 16),
                   child: Text(
                     // Show "Final" for games with scores, otherwise "Upcoming"
-                    widget.game.homeScore != '-' && widget.game.awayScore != '-' ? 'Final' : 'Upcoming',
+                    widget.game.homeScore != '-' && widget.game.awayScore != '-'
+                        ? 'Final'
+                        : 'Upcoming',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
                       fontSize: 16,
                       fontFamily: 'Montserrat',
                       fontWeight: FontWeight.w500,
@@ -335,7 +373,9 @@ class _GamePageState extends State<GamePage> {
                           Text(
                             widget.game.homeabbr,
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.7),
                               fontSize: 16,
                               fontFamily: 'Montserrat',
                               fontWeight: FontWeight.w500,
@@ -345,7 +385,7 @@ class _GamePageState extends State<GamePage> {
                       ),
 
                       // Score section
-                      Container(
+                      SizedBox(
                         width: 140,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -353,20 +393,23 @@ class _GamePageState extends State<GamePage> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(
-                              _formatDate(widget.game.date) + ' | ' + _formatTime(widget.game.time),
+                              '${_formatDate(widget.game.date)} | ${_formatTime(widget.game.time)}',
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.7),
                                 fontSize: 12,
                                 fontFamily: 'Montserrat',
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
                             SizedBox(height: 8),
-                            Container(
+                            SizedBox(
                               width: double.infinity,
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   Text(
@@ -401,7 +444,9 @@ class _GamePageState extends State<GamePage> {
                             Text(
                               widget.game.sportsName.toUpperCase(),
                               style: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.7),
                                 fontSize: 12,
                                 fontFamily: 'Montserrat',
                                 fontWeight: FontWeight.w500,
@@ -423,7 +468,9 @@ class _GamePageState extends State<GamePage> {
                           Text(
                             widget.game.awayabbr,
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.7),
                               fontSize: 16,
                               fontFamily: 'Montserrat',
                               fontWeight: FontWeight.w500,
@@ -451,11 +498,17 @@ class _GamePageState extends State<GamePage> {
                       segments: const <ButtonSegment<GameInfoSegment>>[
                         ButtonSegment<GameInfoSegment>(
                           value: GameInfoSegment.upcomingGames,
-                          label: Text('Upcoming', style: TextStyle(fontWeight: FontWeight.w500)),
+                          label: Text(
+                            'Upcoming',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
                         ),
                         ButtonSegment<GameInfoSegment>(
                           value: GameInfoSegment.standings,
-                          label: Text('Standings', style: TextStyle(fontWeight: FontWeight.w500)),
+                          label: Text(
+                            'Standings',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
                         ),
                       ],
                       selected: <GameInfoSegment>{_selectedSegment},
@@ -475,20 +528,34 @@ class _GamePageState extends State<GamePage> {
           if (_selectedSegment == GameInfoSegment.upcomingGames)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 8, bottom: 8.0),
+                padding: const EdgeInsets.only(
+                  left: 16.0,
+                  right: 16.0,
+                  top: 8,
+                  bottom: 8.0,
+                ),
                 child: Text(
-                  "Upcoming Games",
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w500),
+                  'Upcoming Games',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
           if (_selectedSegment == GameInfoSegment.standings)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 8, bottom: 8.0),
+                padding: const EdgeInsets.only(
+                  left: 16.0,
+                  right: 16.0,
+                  top: 8,
+                  bottom: 8.0,
+                ),
                 child: Text(
-                  "Standings",
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w500),
+                  'Standings',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
@@ -500,7 +567,9 @@ class _GamePageState extends State<GamePage> {
           ),
 
           SliverToBoxAdapter(
-            child: SizedBox(height: MediaQuery.of(context).viewPadding.bottom + 24),
+            child: SizedBox(
+              height: MediaQuery.of(context).viewPadding.bottom + 24,
+            ),
           ), // Ensure space at bottom
         ],
       ),
@@ -514,21 +583,29 @@ class _GamePageState extends State<GamePage> {
 
   // Helper method to build team logo
   Widget _buildTeamLogo(String abbr) {
-    return Container(
+    return SizedBox(
       width: 64,
       height: 60,
       child: Image.asset(
-        "assets/$abbr Logo.png",
+        'assets/$abbr Logo.png',
         errorBuilder: (context, error, stackTrace) {
           // If image not found, show a placeholder
           return Container(
             width: 64,
             height: 60,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Center(child: Icon(Icons.shield_outlined, size: 32, color: Theme.of(context).colorScheme.primary)),
+            child: Center(
+              child: Icon(
+                Icons.shield_outlined,
+                size: 32,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
           );
         },
       ),

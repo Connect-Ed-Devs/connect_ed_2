@@ -41,7 +41,10 @@ class MenuSection {
 
   /// Create a copy of this MenuSection with optional parameter overrides
   MenuSection copyWith({String? sectionTitle, List<List<String>>? courses}) {
-    return MenuSection(sectionTitle: sectionTitle ?? this.sectionTitle, courses: courses ?? this.courses);
+    return MenuSection(
+      sectionTitle: sectionTitle ?? this.sectionTitle,
+      courses: courses ?? this.courses,
+    );
   }
 
   /// Convert MenuSection to a Map for serialization
@@ -53,7 +56,9 @@ class MenuSection {
   factory MenuSection.fromMap(Map<String, dynamic> map) {
     return MenuSection(
       sectionTitle: map['sectionTitle'] ?? '',
-      courses: List<List<String>>.from((map['courses'] ?? []).map((course) => List<String>.from(course))),
+      courses: List<List<String>>.from(
+        (map['courses'] ?? []).map((course) => List<String>.from(course)),
+      ),
     );
   }
 }

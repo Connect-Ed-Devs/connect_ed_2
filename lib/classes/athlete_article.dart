@@ -65,16 +65,24 @@ class AthleteArticle {
       type: map['type'] ?? 'athlete',
       content: map['content'] ?? '',
       weekOf:
-          map['weekOf'] is DateTime ? map['weekOf'] : DateTime.parse(map['weekOf'] ?? DateTime.now().toIso8601String()),
+          map['weekOf'] is DateTime
+              ? map['weekOf']
+              : DateTime.parse(
+                map['weekOf'] ?? DateTime.now().toIso8601String(),
+              ),
       imageUrl: map['imageUrl'] ?? '',
       createdAt:
           map['createdAt'] is DateTime
               ? map['createdAt']
-              : DateTime.parse(map['createdAt'] ?? DateTime.now().toIso8601String()),
+              : DateTime.parse(
+                map['createdAt'] ?? DateTime.now().toIso8601String(),
+              ),
       updatedAt:
           map['updatedAt'] is DateTime
               ? map['updatedAt']
-              : DateTime.parse(map['updatedAt'] ?? DateTime.now().toIso8601String()),
+              : DateTime.parse(
+                map['updatedAt'] ?? DateTime.now().toIso8601String(),
+              ),
       userId: map['userId'] ?? '',
       published: map['published'] ?? false,
       id: map['id'],

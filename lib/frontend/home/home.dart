@@ -27,7 +27,8 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
+class _HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin {
   // Animation controller for the gradient
   late AnimationController _animationController;
 
@@ -54,8 +55,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     super.initState();
 
     // Initialize the animation controller with a very slow rotation
-    _animationController = AnimationController(vsync: this, duration: const Duration(seconds: 15))
-      ..repeat(reverse: true);
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 15),
+    )..repeat(reverse: true);
 
     // Load calendar data when the widget initializes
     _loadCalendarData();
@@ -112,7 +115,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             _hasDataLoadError = true;
             // Set fallback data for UI
             _nextScheduleItem = ScheduleItem(
-              title: "Schedule unavailable",
+              title: 'Schedule unavailable',
               startTime: TimeOfDay(hour: 0, minute: 0),
               endTime: TimeOfDay(hour: 0, minute: 0),
             );
@@ -124,15 +127,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   // Parse error message to make it more user-friendly
   String _parseErrorMessage(String errorMessage) {
     if (errorMessage.contains('network') || errorMessage.contains('Network')) {
-      return "Network connection error";
-    } else if (errorMessage.contains('timeout') || errorMessage.contains('Timeout')) {
-      return "Request timed out";
-    } else if (errorMessage.contains('calendar service') || errorMessage.contains('calendar')) {
-      return "Calendar service unavailable";
-    } else if (errorMessage.contains('Invalid') || errorMessage.contains('invalid')) {
-      return "Invalid calendar link";
+      return 'Network connection error';
+    } else if (errorMessage.contains('timeout') ||
+        errorMessage.contains('Timeout')) {
+      return 'Request timed out';
+    } else if (errorMessage.contains('calendar service') ||
+        errorMessage.contains('calendar')) {
+      return 'Calendar service unavailable';
+    } else if (errorMessage.contains('Invalid') ||
+        errorMessage.contains('invalid')) {
+      return 'Invalid calendar link';
     } else {
-      return "Unable to load calendar data";
+      return 'Unable to load calendar data';
     }
   }
 
@@ -149,7 +155,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
     _calendarData!.forEach((date, calendarItem) {
       // Check if date is between now and next 7 days
-      if (date.isAfter(normalizedNow.subtract(const Duration(days: 1))) && date.isBefore(nextWeek)) {
+      if (date.isAfter(normalizedNow.subtract(const Duration(days: 1))) &&
+          date.isBefore(nextWeek)) {
         upcomingAssessments.addAll(calendarItem.assessments);
       }
     });
@@ -165,10 +172,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     final now = DateTime.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1);
 
-    if (date.year == now.year && date.month == now.month && date.day == now.day) {
-      return "Today";
-    } else if (date.year == tomorrow.year && date.month == tomorrow.month && date.day == tomorrow.day) {
-      return "Tomorrow";
+    if (date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day) {
+      return 'Today';
+    } else if (date.year == tomorrow.year &&
+        date.month == tomorrow.month &&
+        date.day == tomorrow.day) {
+      return 'Tomorrow';
     } else {
       // Format as "Mon, Jan 15"
       return DateFormat('E, MMM d').format(date);
@@ -177,23 +188,25 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   // Find the next schedule item
   ScheduleItem? _getNextScheduleItem(Map<DateTime, CalendarItem> calendarData) {
-    print("--- _getNextScheduleItem called ---");
+    print('--- _getNextScheduleItem called ---');
     if (calendarData.isEmpty) {
-      print("Calendar data is empty.");
+      print('Calendar data is empty.');
       return null;
     }
 
     final now = DateTime.now();
     final currentTime = TimeOfDay.fromDateTime(now);
-    print("Current DateTime: $now, Current TimeOfDay: $currentTime");
+    print('Current DateTime: $now, Current TimeOfDay: $currentTime');
 
     // First check today's schedule
     final today = DateTime(now.year, now.month, now.day);
     print("Checking for today's schedule: $today");
 
     if (calendarData.containsKey(today)) {
-      print("Found schedule for today.");
-      final todaySchedule = List<ScheduleItem>.from(calendarData[today]!.schedule);
+      print('Found schedule for today.');
+      final todaySchedule = List<ScheduleItem>.from(
+        calendarData[today]!.schedule,
+      );
 
       if (todaySchedule.isEmpty) {
         print("Today's schedule is empty.");
@@ -213,29 +226,34 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
         // Find the next class today
         for (final item in todaySchedule) {
-          final itemStartMinutes = item.startTime.hour * 60 + item.startTime.minute;
+          final itemStartMinutes =
+              item.startTime.hour * 60 + item.startTime.minute;
           final currentMinutes = currentTime.hour * 60 + currentTime.minute;
 
           print(
-            "  Comparing Today: ${item.title} (${item.startTime}) -> ${itemStartMinutes} min > ${currentMinutes} min (current)?",
+            '  Comparing Today: ${item.title} (${item.startTime}) -> $itemStartMinutes min > $currentMinutes min (current)?',
           );
 
           if (itemStartMinutes > currentMinutes) {
-            print("    -> YES. Next class today: ${item.title} at ${item.startTime}");
+            print(
+              '    -> YES. Next class today: ${item.title} at ${item.startTime}',
+            );
             return item; // This is the next class today
           } else {
-            print("    -> NO. Class has passed or is ongoing.");
+            print('    -> NO. Class has passed or is ongoing.');
           }
         }
-        print("No suitable next class found for today after checking all items.");
+        print(
+          'No suitable next class found for today after checking all items.',
+        );
       }
     } else {
-      print("No schedule data found for today.");
+      print('No schedule data found for today.');
     }
 
     // If no class found today, check tomorrow
     return ScheduleItem(
-      title: "No Class",
+      title: 'No Class',
       startTime: TimeOfDay(hour: 0, minute: 0),
       endTime: TimeOfDay(hour: 0, minute: 0),
     );
@@ -245,7 +263,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return TodayScheduleDialog(calendarData: _calendarData, dateToShow: DateTime.now());
+        return TodayScheduleDialog(
+          calendarData: _calendarData,
+          dateToShow: DateTime.now(),
+        );
       },
     );
   }
@@ -267,16 +288,24 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               children: [
                 Text("Today's Menu"),
                 SizedBox(width: 12),
-                SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ],
             ),
-            content: Text("Loading menu items..."),
+            content: Text('Loading menu items...'),
           ),
     );
 
     try {
       // Get today's date without time
-      final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+      final today = DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+      );
 
       // Try to get data from cache first
       Map<DateTime, List<MenuSection>>? menuData;
@@ -287,9 +316,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
 
       // If no cached data or error, try to fetch fresh data
-      if (menuData == null) {
-        menuData = await menuManager.fetchData();
-      }
+      menuData ??= await menuManager.fetchData();
 
       // Close loading dialog
       Navigator.of(context).pop();
@@ -315,7 +342,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       setState(() {
         _isLoadingMenu = false;
         _hasMenuLoadError = true;
-        _menuErrorMessage = "Failed to load the menu: ${e.toString()}";
+        _menuErrorMessage = 'Failed to load the menu: ${e.toString()}';
       });
 
       _showMenuErrorDialog(e.toString());
@@ -327,9 +354,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text("No Menu Available"),
+            title: Text('No Menu Available'),
             content: Text("There's no menu available for today."),
-            actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text("CLOSE"))],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('CLOSE'),
+              ),
+            ],
           ),
     );
   }
@@ -339,24 +371,33 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Text("Menu Error"),
+            title: Text('Menu Error'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Failed to load the menu."),
+                Text('Failed to load the menu.'),
                 SizedBox(height: 8),
-                Text(errorMessage, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.error)),
+                Text(
+                  errorMessage,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.of(context).pop(), child: Text("CLOSE")),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('CLOSE'),
+              ),
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pop();
                   _showTodayMenuDialog(); // Retry loading
                 },
-                child: Text("RETRY"),
+                child: Text('RETRY'),
               ),
             ],
           ),
@@ -364,7 +405,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   void _showMenuContentDialog(List<MenuSection> menuSections) {
-    showDialog(context: context, builder: (context) => MenuDialog(menuSections: menuSections));
+    showDialog(
+      context: context,
+      builder: (context) => MenuDialog(menuSections: menuSections),
+    );
   }
 
   // Load games data from the cache manager
@@ -385,9 +429,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
 
       // If no cached data, fetch fresh
-      if (cachedGames == null) {
-        cachedGames = await gamesManager.fetchData();
-      }
+      cachedGames ??= await gamesManager.fetchData();
 
       // Process games data - get recent games with scores
       if (cachedGames != null) {
@@ -395,7 +437,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
         // Get played games (games with scores)
         List<Game> playedGames =
-            cachedGames.values.where((game) => game.homeScore != "-" && game.awayScore != "-").toList();
+            cachedGames.values
+                .where((game) => game.homeScore != '-' && game.awayScore != '-')
+                .toList();
 
         // Sort by date descending (most recent first)
         playedGames.sort((a, b) => b.date.compareTo(a.date));
@@ -472,7 +516,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Failed to refresh: ${_parseErrorMessage(error.toString())}'),
+                content: Text(
+                  'Failed to refresh: ${_parseErrorMessage(error.toString())}',
+                ),
                 backgroundColor: Theme.of(context).colorScheme.error,
                 action: SnackBarAction(
                   label: 'Retry',
@@ -504,11 +550,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   // Calculate scroll progress
                   double progress = 1.0;
                   double height = constraints.maxHeight;
-                  final double collapsedHeight = MediaQuery.of(context).padding.top + 35;
+                  final double collapsedHeight =
+                      MediaQuery.of(context).padding.top + 35;
 
                   if (height > collapsedHeight) {
                     final double maxHeight = 145.0;
-                    progress = (maxHeight - height) / (maxHeight - collapsedHeight);
+                    progress =
+                        (maxHeight - height) / (maxHeight - collapsedHeight);
                   }
 
                   // Clamp progress between 0.0 and 1.0
@@ -540,15 +588,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             } else if (value < 0.5) {
                               // Right edge: top to bottom
                               beginX = 1.0;
-                              beginY = -1.0 + ((value - 0.25) * 8.0); // -1.0 to 1.0
+                              beginY =
+                                  -1.0 + ((value - 0.25) * 8.0); // -1.0 to 1.0
                             } else if (value < 0.75) {
                               // Bottom edge: right to left
-                              beginX = 1.0 - ((value - 0.5) * 8.0); // 1.0 to -1.0
+                              beginX =
+                                  1.0 - ((value - 0.5) * 8.0); // 1.0 to -1.0
                               beginY = 1.0;
                             } else {
                               // Left edge: bottom to top
                               beginX = -1.0;
-                              beginY = 1.0 - ((value - 0.75) * 8.0); // 1.0 to -1.0
+                              beginY =
+                                  1.0 - ((value - 0.75) * 8.0); // 1.0 to -1.0
                             }
 
                             // Second point moves in opposite direction
@@ -559,19 +610,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             } else if (value < 0.5) {
                               // Left edge: bottom to top
                               endX = -1.0;
-                              endY = 1.0 - ((value - 0.25) * 8.0); // 1.0 to -1.0
+                              endY =
+                                  1.0 - ((value - 0.25) * 8.0); // 1.0 to -1.0
                             } else if (value < 0.75) {
                               // Top edge: left to right
-                              endX = -1.0 + ((value - 0.5) * 8.0); // -1.0 to 1.0
+                              endX =
+                                  -1.0 + ((value - 0.5) * 8.0); // -1.0 to 1.0
                               endY = -1.0;
                             } else {
                               // Right edge: top to bottom
                               endX = 1.0;
-                              endY = -1.0 + ((value - 0.75) * 8.0); // -1.0 to 1.0
+                              endY =
+                                  -1.0 + ((value - 0.75) * 8.0); // -1.0 to 1.0
                             }
 
                             // Check if we're in light mode or dark mode
-                            final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+                            final isDarkMode =
+                                Theme.of(context).brightness == Brightness.dark;
 
                             // Select appropriate gradient colors based on theme mode
                             final List<Color> gradientColors = [
@@ -611,10 +666,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                               child: Column(
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       OpacityIconButton(
-                                        onPressed: _showTodayMenuDialog, // Connect to menu dialog
+                                        onPressed:
+                                            _showTodayMenuDialog, // Connect to menu dialog
                                         icon: Icons.flatware,
                                         color: Colors.white,
                                       ),
@@ -622,7 +679,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                         onPressed: () {
                                           Navigator.push(
                                             context,
-                                            MaterialPageRoute(builder: (context) => SettingsPage()),
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (context) => SettingsPage(),
+                                            ),
                                           );
                                         },
                                         icon: Icons.settings_outlined,
@@ -632,33 +692,50 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   ),
                                   Spacer(),
                                   InkWell(
-                                    onTap: !_hasDataLoadError ? _showTodayScheduleDialog : null,
+                                    onTap:
+                                        !_hasDataLoadError
+                                            ? _showTodayScheduleDialog
+                                            : null,
                                     child: Padding(
-                                      padding: const EdgeInsets.only(left: 8.0, right: 8.0, top: 32),
+                                      padding: const EdgeInsets.only(
+                                        left: 8.0,
+                                        right: 8.0,
+                                        top: 32,
+                                      ),
                                       child: Flex(
                                         direction: Axis.horizontal,
-                                        crossAxisAlignment: CrossAxisAlignment.end,
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 SizedBox(height: 16),
                                                 Row(
                                                   children: [
                                                     Text(
-                                                      _hasDataLoadError ? "Data Error" : "Up Next",
+                                                      _hasDataLoadError
+                                                          ? 'Data Error'
+                                                          : 'Up Next',
                                                       style: TextStyle(
                                                         fontSize: 16,
-                                                        fontWeight: FontWeight.w500,
+                                                        fontWeight:
+                                                            FontWeight.w500,
                                                         color: Colors.white,
                                                       ),
                                                     ),
                                                     if (_hasDataLoadError) ...[
                                                       SizedBox(width: 8),
-                                                      Icon(Icons.error_outline, color: Colors.white, size: 16),
+                                                      Icon(
+                                                        Icons.error_outline,
+                                                        color: Colors.white,
+                                                        size: 16,
+                                                      ),
                                                     ],
                                                     if (_isLoading) ...[
                                                       SizedBox(width: 8),
@@ -667,7 +744,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                         height: 16,
                                                         child: CircularProgressIndicator(
                                                           strokeWidth: 2,
-                                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                          valueColor:
+                                                              AlwaysStoppedAnimation<
+                                                                Color
+                                                              >(Colors.white),
                                                         ),
                                                       ),
                                                     ],
@@ -675,8 +755,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                 ),
                                                 Text(
                                                   _hasDataLoadError
-                                                      ? (_errorMessage ?? "Failed to load schedule")
-                                                      : (_nextScheduleItem?.title ?? "No upcoming classes"),
+                                                      ? (_errorMessage ??
+                                                          'Failed to load schedule')
+                                                      : (_nextScheduleItem
+                                                              ?.title ??
+                                                          'No upcoming classes'),
                                                   style: TextStyle(
                                                     fontSize: 24,
                                                     fontWeight: FontWeight.w600,
@@ -685,12 +768,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                                 ),
                                                 if (_hasDataLoadError)
                                                   Padding(
-                                                    padding: const EdgeInsets.only(top: 4.0),
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          top: 4.0,
+                                                        ),
                                                     child: Text(
-                                                      "Pull down to retry",
+                                                      'Pull down to retry',
                                                       style: TextStyle(
                                                         fontSize: 12,
-                                                        color: Colors.white.withOpacity(0.8),
+                                                        color: Colors.white
+                                                            .withValues(
+                                                              alpha: 0.8,
+                                                            ),
                                                       ),
                                                     ),
                                                   ),
@@ -698,26 +787,39 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                             ),
                                           ),
                                           if (_nextScheduleItem != null &&
-                                              _nextScheduleItem!.title != "No Class" &&
-                                              _nextScheduleItem!.title != "Schedule unavailable" &&
+                                              _nextScheduleItem!.title !=
+                                                  'No Class' &&
+                                              _nextScheduleItem!.title !=
+                                                  'Schedule unavailable' &&
                                               !_hasDataLoadError)
                                             Column(
                                               children: [
                                                 Text(
                                                   _nextScheduleItem!
-                                                      .formatTime(_nextScheduleItem!.startTime)
-                                                      .split(" ")[0],
+                                                      .formatTime(
+                                                        _nextScheduleItem!
+                                                            .startTime,
+                                                      )
+                                                      .split(' ')[0],
                                                   style: TextStyle(
                                                     color: Colors.white,
                                                     fontWeight: FontWeight.w500,
                                                     fontSize: 16,
                                                   ),
                                                 ),
-                                                Text("|", style: TextStyle(color: Colors.white)),
+                                                Text(
+                                                  '|',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
                                                 Text(
                                                   _nextScheduleItem!
-                                                      .formatTime(_nextScheduleItem!.endTime)
-                                                      .split(" ")[0],
+                                                      .formatTime(
+                                                        _nextScheduleItem!
+                                                            .endTime,
+                                                      )
+                                                      .split(' ')[0],
                                                   style: TextStyle(
                                                     color: Colors.white,
                                                     fontWeight: FontWeight.w500,
@@ -750,15 +852,24 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 if (_hasDataLoadError) ...[
-                                  Icon(Icons.error_outline, color: Colors.white, size: 16),
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
                                   SizedBox(width: 8),
                                 ],
                                 Flexible(
                                   child: Text(
                                     _hasDataLoadError
-                                        ? (_errorMessage ?? "Schedule unavailable")
+                                        ? (_errorMessage ??
+                                            'Schedule unavailable')
                                         : "Up Next: ${_nextScheduleItem?.title ?? 'No upcoming classes'}",
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white,
+                                    ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -785,10 +896,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   children: [
                     Row(
                       children: [
-                        Text("Recent Games", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+                        Text(
+                          'Recent Games',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                         if (_hasGamesError) ...[
                           SizedBox(width: 8),
-                          Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 20),
+                          Icon(
+                            Icons.error_outline,
+                            color: Theme.of(context).colorScheme.error,
+                            size: 20,
+                          ),
                         ],
                       ],
                     ),
@@ -797,7 +918,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               ),
             ),
             SliverToBoxAdapter(
-              child: Container(
+              child: SizedBox(
                 height: 190,
                 child:
                     _isLoadingGames
@@ -807,24 +928,34 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
+                              Icon(
+                                Icons.error_outline,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
                               SizedBox(height: 8),
                               Text(
-                                "Could not load games",
-                                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                                'Could not load games',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
                               ),
-                              TextButton(onPressed: _loadGamesData, child: Text("Retry")),
+                              TextButton(
+                                onPressed: _loadGamesData,
+                                child: Text('Retry'),
+                              ),
                             ],
                           ),
                         )
                         : _recentGames.isEmpty
                         ? Center(
                           child: Text(
-                            "No recent games found",
+                            'No recent games found',
                             style: TextStyle(
                               fontSize: 16,
                               fontStyle: FontStyle.italic,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
                           ),
                         )
@@ -834,7 +965,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           itemCount: _recentGames.length,
                           itemBuilder: (context, index) {
                             return Padding(
-                              padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+                              padding: const EdgeInsets.only(
+                                right: 16,
+                                top: 8,
+                                bottom: 8,
+                              ),
                               child: GameWidget(game: _recentGames[index]),
                             );
                           },
@@ -852,10 +987,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   children: [
                     Row(
                       children: [
-                        Text("Upcoming Assessments", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
+                        Text(
+                          'Upcoming Assessments',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                         if (_hasDataLoadError) ...[
                           SizedBox(width: 8),
-                          Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 20),
+                          Icon(
+                            Icons.error_outline,
+                            color: Theme.of(context).colorScheme.error,
+                            size: 20,
+                          ),
                         ],
                       ],
                     ),
@@ -878,10 +1023,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 CircularProgressIndicator(),
                                 SizedBox(height: 16),
                                 Text(
-                                  "Loading assessments...",
+                                  'Loading assessments...',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
                                   ),
                                 ),
                               ],
@@ -894,10 +1042,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             padding: const EdgeInsets.symmetric(vertical: 24.0),
                             child: Column(
                               children: [
-                                Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+                                Icon(
+                                  Icons.error_outline,
+                                  size: 48,
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
                                 SizedBox(height: 16),
                                 Text(
-                                  "Failed to load assessments",
+                                  'Failed to load assessments',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
@@ -906,10 +1058,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 ),
                                 SizedBox(height: 8),
                                 Text(
-                                  _errorMessage ?? "Unknown error occurred",
+                                  _errorMessage ?? 'Unknown error occurred',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -917,10 +1072,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 ElevatedButton.icon(
                                   onPressed: _loadCalendarData,
                                   icon: Icon(Icons.refresh, size: 16),
-                                  label: Text("Retry"),
+                                  label: Text('Retry'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Theme.of(context).colorScheme.primary,
-                                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                                    backgroundColor:
+                                        Theme.of(context).colorScheme.primary,
+                                    foregroundColor:
+                                        Theme.of(context).colorScheme.onPrimary,
                                   ),
                                 ),
                               ],
@@ -936,23 +1093,30 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 Icon(
                                   Icons.assignment_outlined,
                                   size: 48,
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.3),
                                 ),
                                 SizedBox(height: 16),
                                 Text(
-                                  "No upcoming assessments",
+                                  'No upcoming assessments',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
-                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
                                   ),
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  "Check back later or refresh to see new assessments",
+                                  'Check back later or refresh to see new assessments',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.5),
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -966,25 +1130,39 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           padding: EdgeInsets.only(top: 16, bottom: 24),
                           itemCount: upcomingAssessments.length,
                           separatorBuilder:
-                              (context, index) => Divider(height: 1, color: Theme.of(context).colorScheme.tertiary),
+                              (context, index) => Divider(
+                                height: 1,
+                                color: Theme.of(context).colorScheme.tertiary,
+                              ),
                           itemBuilder: (context, index) {
                             final assessment = upcomingAssessments[index];
                             return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12.0),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12.0,
+                              ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text(assessment.title, style: TextStyle(fontWeight: FontWeight.w500)),
+                                        Text(
+                                          assessment.title,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
                                         SizedBox(height: 2),
                                         Text(
                                           assessment.className,
                                           style: TextStyle(
                                             fontSize: 13,
-                                            color: Theme.of(context).colorScheme.onSurface.withAlpha(180),
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 180),
                                           ),
                                         ),
                                       ],
@@ -995,7 +1173,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       _formatAssessmentDate(assessment.date),
                                       style: TextStyle(
                                         fontWeight: FontWeight.w500,
-                                        color: Theme.of(context).colorScheme.primary,
+                                        color:
+                                            Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
                                       ),
                                     ),
                                   ),
@@ -1008,7 +1189,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             ),
 
             // Add space at the bottom
-            SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).viewPadding.bottom + 24)),
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: MediaQuery.of(context).viewPadding.bottom + 24,
+              ),
+            ),
           ],
         ),
       ),

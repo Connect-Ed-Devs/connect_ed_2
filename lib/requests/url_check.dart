@@ -11,12 +11,12 @@ Future<bool> checkLink(String url) async {
     }
 
     // Try to parse the calendar data
-    final iCalendar = ICalendar.fromLines(response.body.split("\n"));
+    final iCalendar = ICalendar.fromLines(response.body.split('\n'));
     final jsonData = iCalendar.toJson();
 
     // Check if the 'data' field, which is used in calendar_requests.dart, exists and is parsable.
     // This is a basic check to see if the structure is somewhat as expected.
-    if (jsonData["data"] == null) {
+    if (jsonData['data'] == null) {
       // If "data" is null, it's likely not a format we can process as in calendar_requests.
       return false;
     }
@@ -31,8 +31,8 @@ Future<bool> checkLink(String url) async {
 }
 
 String makeHTTPS(String url) {
-  if (url.contains("webcal")) {
-    return url.replaceFirst("webcal", "https");
+  if (url.contains('webcal')) {
+    return url.replaceFirst('webcal', 'https');
   }
   return url;
 }

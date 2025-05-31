@@ -6,8 +6,13 @@ class OpacityIconButton extends StatefulWidget {
   final Color? color;
   final double size;
 
-  const OpacityIconButton({Key? key, required this.icon, required this.onPressed, this.color, this.size = 24.0})
-    : super(key: key);
+  const OpacityIconButton({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    this.color,
+    this.size = 24.0,
+  });
 
   @override
   State<OpacityIconButton> createState() => _OpacityIconButtonState();
@@ -26,7 +31,7 @@ class _OpacityIconButtonState extends State<OpacityIconButton> {
               ? null
               : (_) {
                 setState(() => _isPressed = false);
-                widget.onPressed!();
+                widget.onPressed();
               },
       behavior: HitTestBehavior.opaque,
       onTapCancel: isDisabled ? null : () => setState(() => _isPressed = false),
@@ -35,7 +40,11 @@ class _OpacityIconButtonState extends State<OpacityIconButton> {
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 25),
           opacity: _isPressed && !isDisabled ? 0.4 : 1.0,
-          child: Icon(widget.icon, color: widget.color ?? Theme.of(context).iconTheme.color, size: widget.size),
+          child: Icon(
+            widget.icon,
+            color: widget.color ?? Theme.of(context).iconTheme.color,
+            size: widget.size,
+          ),
         ),
       ),
     );
@@ -50,13 +59,13 @@ class OpacityTextButton extends StatefulWidget {
   final FontWeight fontWeight;
 
   const OpacityTextButton({
-    Key? key,
+    super.key,
     required this.text,
     required this.onPressed,
     this.color,
     this.fontSize = 16.0,
     this.fontWeight = FontWeight.w500,
-  }) : super(key: key);
+  });
 
   @override
   State<OpacityTextButton> createState() => _OpacityTextButtonState();
@@ -75,7 +84,8 @@ class _OpacityTextButtonState extends State<OpacityTextButton> {
               ? null
               : (_) {
                 setState(() => _isPressed = false);
-                widget.onPressed!(); // widget.onPressed will not be null here due to isDisabled check
+                widget
+                    .onPressed(); // widget.onPressed will not be null here due to isDisabled check
               },
       behavior: HitTestBehavior.opaque,
       onTapCancel: isDisabled ? null : () => setState(() => _isPressed = false),
