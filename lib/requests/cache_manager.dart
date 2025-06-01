@@ -47,7 +47,10 @@ abstract class CacheManager {
   /// Returns a string representation of the cache status
   String getCacheStatusString() {
     final status = getCacheStatus();
-    return status.toString().split('.').last; // Converts 'CacheStatus.fresh' to 'fresh'
+    return status
+        .toString()
+        .split('.')
+        .last; // Converts 'CacheStatus.fresh' to 'fresh'
   }
 
   Future<dynamic> fetchData();
@@ -70,6 +73,11 @@ abstract class CacheManager {
 
   /// Gets cached data if available and not expired
   dynamic getCachedData() {
+    // Simulate an error for testing cached data retrieval
+    // throw Exception('Simulated cache read error: Unable to access cached data');
+
+    // Original code commented out for testing
+
     final jsonData = prefs.getString(cacheKey);
 
     if (jsonData == null) return null;
