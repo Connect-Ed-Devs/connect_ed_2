@@ -142,46 +142,51 @@ class CECalendarAppBar extends StatelessWidget {
                   padding: const EdgeInsets.only(
                     bottom: 8,
                   ), // Add some padding at the bottom
-                  child: Opacity(
-                    opacity: (1.0 - progress * 1.5).clamp(
-                      0.0,
-                      1.0,
-                    ), // Fade out faster
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w600,
+                  child: IgnorePointer(
+                    ignoring:
+                        progress >=
+                        1.0, // Ignore touches when completely faded out
+                    child: Opacity(
+                      opacity: (1.0 - progress * 1.5).clamp(
+                        0.0,
+                        1.0,
+                      ), // Fade out faster
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        Row(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                0.0,
-                                0.0,
-                                20.0,
-                                0.0,
+                          Row(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  0.0,
+                                  0.0,
+                                  20.0,
+                                  0.0,
+                                ),
+                                child: OpacityIconButton(
+                                  icon: Icons.today,
+                                  onPressed: onTodayPressed,
+                                ),
                               ),
-                              child: OpacityIconButton(
-                                icon: Icons.today,
-                                onPressed: onTodayPressed,
+                              OpacityIconButton(
+                                icon: Icons.arrow_back_ios,
+                                onPressed: onPreviousMonth,
                               ),
-                            ),
-                            OpacityIconButton(
-                              icon: Icons.arrow_back_ios,
-                              onPressed: onPreviousMonth,
-                            ),
-                            OpacityIconButton(
-                              icon: Icons.arrow_forward_ios,
-                              onPressed: onNextMonth,
-                            ),
-                          ],
-                        ),
-                      ],
+                              OpacityIconButton(
+                                icon: Icons.arrow_forward_ios,
+                                onPressed: onNextMonth,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -192,44 +197,49 @@ class CECalendarAppBar extends StatelessWidget {
                 top: MediaQuery.of(context).padding.top,
                 left: 0,
                 right: 0,
-                child: Opacity(
-                  opacity: progress,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Date text (month + day)
-                      Container(
-                        color:
-                            Theme.of(context)
-                                .colorScheme
-                                .surface, // Background color to prevent overlap
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              collapsedTitle,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
+                child: IgnorePointer(
+                  ignoring:
+                      progress ==
+                      0.0, // Ignore touches when completely transparent
+                  child: Opacity(
+                    opacity: progress,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Date text (month + day)
+                        Container(
+                          color:
+                              Theme.of(context)
+                                  .colorScheme
+                                  .surface, // Background color to prevent overlap
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                collapsedTitle,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                            OpacityIconButton(
-                              icon: Icons.today,
-                              onPressed: onTodayPressed,
-                            ),
-                          ],
+                              OpacityIconButton(
+                                icon: Icons.today,
+                                onPressed: onTodayPressed,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
 
-                      // Week view - stabilizes in position
-                      Container(
-                        height: 30,
-                        margin: EdgeInsets.only(top: 8), // Fixed margin
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: _buildWeekView(),
-                      ),
-                    ],
+                        // Week view - stabilizes in position
+                        Container(
+                          height: 30,
+                          margin: EdgeInsets.only(top: 8), // Fixed margin
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _buildWeekView(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
