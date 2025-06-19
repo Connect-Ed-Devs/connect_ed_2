@@ -2,6 +2,7 @@ import 'package:connect_ed_2/frontend/articles/articles.dart';
 import 'package:connect_ed_2/frontend/calendar/calendar.dart';
 import 'package:connect_ed_2/frontend/events/events.dart';
 import 'package:connect_ed_2/frontend/home/home.dart';
+import 'package:connect_ed_2/frontend/onboarding/first_time.dart';
 import 'package:connect_ed_2/frontend/onboarding/welcome.dart';
 import 'package:connect_ed_2/frontend/setup/nav_bar.dart';
 import 'package:connect_ed_2/frontend/setup/styles.dart';
@@ -51,6 +52,7 @@ class MyApp extends StatelessWidget {
 
     // If no link is saved or setup is not complete, show welcome/setup flow
     if (setup != 'complete') {
+      return const FirstTimePage();
       return const WelcomePage();
     }
 
