@@ -70,3 +70,9 @@ tasks/
 
 # Cursor
 .cursor/
+
+# Firebase configuration (contains sensitive API keys)
+lib/firebase/firebase_options.dart
+
+# Error logs with personal information
+error.txt
