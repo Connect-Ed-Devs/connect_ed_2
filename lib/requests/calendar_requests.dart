@@ -141,8 +141,11 @@ class CalendarManager extends CacheManager {
     for (final item in items) {
       if (item['dtstart'] != null && item['dtend'] != null) {
         if (item['dtstart']['dt'].length > 9) {
-          DateTime startDate = DateTime.parse(item['dtstart']['dt']);
-          DateTime endDate = DateTime.parse(item['dtend']['dt']);
+          final DateTime? startDate = parseICalendarDate(
+            item['dtstart']['dt'],
+          );
+          final DateTime? endDate = parseICalendarDate(item['dtend']['dt']);
+          if (startDate == null || endDate == null) continue;
           DateTime date = DateTime(
             startDate.year,
             startDate.month,
@@ -221,8 +224,21 @@ class CalendarManager extends CacheManager {
           } else {
             calendarData[date]!.schedule.add(scheduleItem);
           }
-        } else if (item['dtstart']['dt'].length == 8) {
-          DateTime startDate = DateTime.parse(item['dtstart']['dt']);
+        } else if (item['dtstart']['dt'].length >= 8) {
+          final DateTime? startDate = parseICalendarDate(
+            item['dtstart']['dt'],
+          );
+          if (startDate == null) continue;
+
+          // Normalise to midnight. Schedule entries are keyed by a
+          // date-only DateTime, so assessments must use the same key shape
+          // or `_calendarData[selectedDay]` never finds them.
+          final DateTime dueDay = DateTime(
+            startDate.year,
+            startDate.month,
+            startDate.day,
+          );
+
           var descriptionList = item['summary'].split(': ');
           String assignmentName =
               descriptionList[descriptionList.length - 1] ?? '';
@@ -236,16 +252,16 @@ class CalendarManager extends CacheManager {
           Assessment assessment = Assessment(
             title: assignmentName,
             className: className,
-            date: startDate,
+            date: dueDay,
           );
 
-          if (calendarData[startDate] == null) {
-            calendarData[startDate] = CalendarItem(
+          if (calendarData[dueDay] == null) {
+            calendarData[dueDay] = CalendarItem(
               schedule: [],
               assessments: [assessment],
             );
           } else {
-            calendarData[startDate]!.assessments.add(assessment);
+            calendarData[dueDay]!.assessments.add(assessment);
           }
         }
       }
@@ -253,6 +269,53 @@ class CalendarManager extends CacheManager {
     super.storeData(calendarData);
     return calendarData;
   }
+}
+
+/// Parses a raw iCalendar DATE or DATE-TIME value into a [DateTime].
+///
+/// `icalendar_parser` hands back the raw ICS string, which can legally be any
+/// of these:
+///
+/// * `20250315`          - DATE (all-day). This is how Blackbaud exports
+///   assignments, so it is the common case.
+/// * `20250315T093000Z`  - DATE-TIME in UTC
+/// * `20250315T093000`   - DATE-TIME, floating/local
+/// * `2025-03-15...`     - already normalised
+///
+/// `DateTime.parse` only accepts the last form. The first three used to throw
+/// a FormatException, and because there was no try/catch that exception took
+/// down the *entire* calendar fetch - not just the one event.
+///
+/// Returns null if the value cannot be understood, so callers can skip the
+/// event instead of crashing.
+DateTime? parseICalendarDate(String raw) {
+  final value = raw.trim();
+  if (value.isEmpty) return null;
+
+  // Already has separators - DateTime.parse can handle it.
+  if (value.contains('-')) return DateTime.tryParse(value);
+
+  // Basic format: YYYYMMDD with an optional THHMMSS and trailing Z.
+  final match = RegExp(
+    r'^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$',
+  ).firstMatch(value);
+  if (match == null) return null;
+
+  final year = int.parse(match.group(1)!);
+  final month = int.parse(match.group(2)!);
+  final day = int.parse(match.group(3)!);
+
+  // DATE (all-day) - no time component, so build a local midnight.
+  if (match.group(4) == null) return DateTime(year, month, day);
+
+  final hour = int.parse(match.group(4)!);
+  final minute = int.parse(match.group(5)!);
+  final second = int.parse(match.group(6)!);
+  final isUtc = match.group(7) == 'Z';
+
+  return isUtc
+      ? DateTime.utc(year, month, day, hour, minute, second)
+      : DateTime(year, month, day, hour, minute, second);
 }
 
 String getCourseName(String name) {
