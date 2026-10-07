@@ -231,7 +231,12 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
 
   String _dueLabel(_Entry entry) => DateFormat('EEE d MMM').format(entry.date);
 
-  String _countdownLabel(_Entry entry) {
+  /// The one date label a row carries.
+  ///
+  /// Relative while that still reads naturally, absolute beyond it, so a row
+  /// never shows two competing date strings the way it did with a "Due ..."
+  /// line beside a countdown pill.
+  String _dueText(_Entry entry) {
     final days = entry.daysUntilDue(_today);
     if (days < 0) {
       final n = days.abs();
@@ -239,7 +244,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
     }
     if (days == 0) return 'Today';
     if (days == 1) return 'Tomorrow';
-    return 'In $days days';
+    return _dueLabel(entry);
   }
 
   // ---------------------------------------------------------------------------
@@ -408,7 +413,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
       final items = grouped[bucket];
       if (items == null || items.isEmpty) continue;
       widgets.add(_buildSectionHeader(_bucketTitle(bucket), items.length));
-      widgets.add(_buildCardList(items));
+      widgets.add(_buildList(items));
     }
 
     if (done.isNotEmpty) {
@@ -416,7 +421,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
       // Collapsed by default: finished work is reference material, not a
       // to-do list, but it should never be impossible to find again.
       if (_completedExpanded) {
-        widgets.add(_buildCardList(done, done: true));
+        widgets.add(_buildList(done, done: true));
       }
     }
 
@@ -430,8 +435,6 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
         child: Row(
           children: [
-            _sectionDot(theme),
-            const SizedBox(width: 8),
             Text(
               title,
               style: TextStyle(
@@ -467,8 +470,6 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
             child: Row(
               children: [
-                _sectionDot(theme),
-                const SizedBox(width: 8),
                 Text(
                   _bucketTitle(_Bucket.done),
                   style: TextStyle(
@@ -511,174 +512,124 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
     );
   }
 
-  Widget _sectionDot(ThemeData theme) => Container(
-    width: 8,
-    height: 8,
-    decoration: BoxDecoration(
-      color: theme.colorScheme.primary,
-      shape: BoxShape.circle,
-    ),
-  );
-
-  Widget _buildCardList(List<_Entry> items, {bool done = false}) {
+  Widget _buildList(List<_Entry> items, {bool done = false}) {
+    final theme = Theme.of(context);
     return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       sliver: SliverList.separated(
         itemCount: items.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 10),
+        // A hairline indented to the text column, as on the Calendar tab's
+        // assessment list - not a box per row.
+        separatorBuilder: (context, index) => Divider(
+          height: 1,
+          thickness: 1,
+          indent: 35, // checkbox (22) + its gap (13)
+          color: theme.colorScheme.tertiary,
+        ),
         itemBuilder: (context, index) =>
-            _buildCard(items[index], isDone: done || _isDone(items[index])),
+            _buildRow(items[index], isDone: done || _isDone(items[index])),
       ),
     );
   }
 
-  Widget _buildCard(_Entry entry, {required bool isDone}) {
+  /// One assignment, as a row on the canvas rather than a card in a box.
+  ///
+  /// This used to be a bordered rounded container carrying a 5px accent bar down
+  /// its left edge. A coloured left border is the most reliable "generated
+  /// rather than designed" tell there is (DESIGN.md 2.1), and the container did
+  /// nothing a list does not already do. Matches the Calendar tab's assessment
+  /// list.
+  Widget _buildRow(_Entry entry, {required bool isDone}) {
     final theme = Theme.of(context);
     final assessment = entry.assessment;
-    final accent = theme.colorScheme.primary;
+    final days = entry.daysUntilDue(_today);
 
-    return Material(
-      color: theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _toggleCompleted(entry.id),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.18),
+    return InkWell(
+      onTap: () => _toggleCompleted(entry.id),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // The row's only control, so it is the only thing here wearing the
+            // brand colour.
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              margin: const EdgeInsets.only(top: 1),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isDone
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.35),
+                  width: 1.6,
+                ),
+                color: isDone ? theme.colorScheme.primary : Colors.transparent,
+              ),
+              child: isDone
+                  ? Icon(
+                      Icons.check,
+                      size: 14,
+                      color: theme.colorScheme.onPrimary,
+                    )
+                  : null,
             ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // One accent colour throughout, so the spine reads as this
-                  // app's blue rather than as an arbitrary per-subject hue.
-                  Container(
-                    width: 5,
-                    color: isDone
-                        ? accent.withValues(alpha: 0.25)
-                        : accent,
+                  Text(
+                    assessment.title.trim().isEmpty
+                        ? 'Untitled assignment'
+                        : assessment.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      decoration: isDone ? TextDecoration.lineThrough : null,
+                      color: isDone
+                          ? theme.colorScheme.onSurface.withValues(alpha: 0.45)
+                          : theme.colorScheme.onSurface,
+                    ),
                   ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 13,
-                      ),
-                      child: Row(
-                        children: [
-                          // Completion toggle
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isDone
-                                    ? accent
-                                    : accent.withValues(alpha: 0.5),
-                                width: 1.8,
-                              ),
-                              color: isDone ? accent : Colors.transparent,
-                            ),
-                            child: isDone
-                                ? Icon(
-                                    Icons.check,
-                                    size: 14,
-                                    color: theme.colorScheme.onPrimary,
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(width: 13),
-                          // Title + class
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  assessment.title.trim().isEmpty
-                                      ? 'Untitled assignment'
-                                      : assessment.title,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    decoration: isDone
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                    color: isDone
-                                        ? theme.colorScheme.onSurface
-                                            .withValues(alpha: 0.45)
-                                        : theme.colorScheme.onSurface,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        assessment.className.isEmpty
-                                            ? 'Unclassified'
-                                            : assessment.className,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 12.5,
-                                          color: accent,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Due ${_dueLabel(entry)}',
-                                      style: TextStyle(
-                                        fontSize: 12.5,
-                                        color: theme.colorScheme.onSurface
-                                            .withValues(alpha: 0.5),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          // Countdown chip
-                          if (!isDone)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: accent.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                _countdownLabel(entry),
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: accent,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
+                  const SizedBox(height: 2),
+                  // Secondary lines are secondary text; the Calendar tab already
+                  // renders class names this way. Colouring every row's class
+                  // blue was decoration, not information.
+                  Text(
+                    assessment.className.isEmpty
+                        ? 'Unclassified'
+                        : assessment.className,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
+            const SizedBox(width: 12),
+            // Plain right-aligned text where the filled countdown pill used to
+            // be. The colour is doing a job: error once it is due today or late.
+            Text(
+              _dueText(entry),
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: isDone
+                    ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
+                    : (days <= 0
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.55)),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -123,9 +123,38 @@ void main() {
 
       expect(find.text('Essay draft'), findsOneWidget);
       expect(find.text('English'), findsOneWidget);
+      // One date label per row: relative while that reads naturally, the date
+      // beyond it. It replaced a "Due ..." line beside a countdown pill.
       expect(
-        find.text('Due ${DateFormat('EEE d MMM').format(_due(15))}'),
+        find.text(DateFormat('EEE d MMM').format(_due(15))),
         findsOneWidget,
+      );
+    });
+
+    testWidgets('rows sit on the canvas, separated by a divider', (
+      tester,
+    ) async {
+      _seed({
+        _due(14): _item([
+          _assessment('Lab report', 'Chemistry', _due(14)),
+          _assessment('Problem set', 'Math', _due(14)),
+        ]),
+      });
+
+      await _pumpTab(tester);
+
+      // A list, not a stack of containers: one hairline between the two rows,
+      // indented to the text column.
+      expect(find.byType(Divider), findsOneWidget);
+      // Regression guard for the removed row chrome - a rounded surface per
+      // item plus the coloured accent spine down its left edge, which is the
+      // most reliable "generated, not designed" tell there is (DESIGN.md 2.1).
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is Material && w.borderRadius != null,
+        ),
+        findsNothing,
+        reason: 'assignment rows should sit on the canvas, not in rounded cards',
       );
     });
 
