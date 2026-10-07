@@ -10,10 +10,19 @@ import 'package:intl/intl.dart';
 ///
 /// The calendar feed carries assignments as all-day events; they were
 /// previously only visible buried inside the Calendar tab, one day at a time.
-/// This screen flattens every assessment across the whole feed, sorts it by
+/// This screen flattens the assessments for a single month, sorts them by
 /// urgency, and lets you tick things off (persisted in SharedPreferences).
+///
+/// A year-long feed holds far more than anyone wants to scroll at once, so the
+/// view opens on the current month with a picker for the rest, and finished
+/// work collapses into its own dropdown instead of disappearing.
 class AssignmentsPage extends StatefulWidget {
-  const AssignmentsPage({super.key});
+  const AssignmentsPage({super.key, this.now});
+
+  /// Overrides "today". Urgency grouping and the month the tab opens on both
+  /// read the clock, so pinning it is the only way to test either
+  /// deterministically. Production callers leave it null.
+  final DateTime? now;
 
   @override
   State<AssignmentsPage> createState() => _AssignmentsPageState();
@@ -38,25 +47,39 @@ class _Entry {
     return '${assessment.className}|${assessment.title}|$day';
   }
 
-  int get daysUntilDue {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    return date.difference(today).inDays;
-  }
+  /// Whole days from [today] until this is due. Negative once it is late.
+  int daysUntilDue(DateTime today) => date.difference(today).inDays;
 }
 
 class _AssignmentsPageState extends State<AssignmentsPage> {
   Map<DateTime, CalendarItem>? _calendarData;
   bool _isLoading = true;
   String? _errorMessage;
-  bool _showCompleted = false;
+
+  /// Whether the collapsed "Completed" dropdown has been opened.
+  bool _completedExpanded = false;
+
   Set<String> _completed = <String>{};
 
+  /// Midnight on the first of the month being shown. Opens on the current one.
+  late DateTime _selectedMonth;
+
+  /// Midnight today, captured once so every row on a build agrees on "today".
+  late final DateTime _today;
+
   static const _completedKey = 'assignments_completed';
+
+  /// The month [date] falls in, as a value that can be compared and used as a
+  /// dropdown key. Day and time are dropped so every day of a month maps to the
+  /// same value.
+  static DateTime _monthOf(DateTime date) => DateTime(date.year, date.month);
 
   @override
   void initState() {
     super.initState();
+    final now = widget.now ?? DateTime.now();
+    _today = DateTime(now.year, now.month, now.day);
+    _selectedMonth = _monthOf(_today);
     _completed = _loadCompleted();
     _loadCalendarData();
   }
@@ -85,7 +108,14 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
     _persistCompleted();
   }
 
-  void _loadCalendarData() {
+  bool _isDone(_Entry entry) => _completed.contains(entry.id);
+
+  /// Loads assignments, preferring fresh cache over the network.
+  ///
+  /// Returns a [Future] that completes once the (possibly networked) load has
+  /// settled, so `RefreshIndicator.onRefresh` keeps its spinner up until the
+  /// refresh is actually done instead of hiding it immediately.
+  Future<void> _loadCalendarData() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -95,6 +125,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
     if (status != CacheStatus.expired) {
       final cached = calendarManager.getCachedData();
       if (cached != null) {
+        if (!mounted) return;
         setState(() {
           _calendarData = cached;
           _isLoading = false;
@@ -103,34 +134,37 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
       }
     }
 
-    calendarManager
-        .fetchData()
-        .then((data) {
-          if (!mounted) return;
-          setState(() {
-            _calendarData = data;
-            _isLoading = false;
-            _errorMessage = null;
-          });
-        })
-        .catchError((error) {
-          if (!mounted) return;
-          setState(() {
-            _isLoading = false;
-            _errorMessage = error.toString();
-          });
-        });
+    try {
+      final data = await calendarManager.fetchData();
+      if (!mounted) return;
+      setState(() {
+        _calendarData = data;
+        _isLoading = false;
+        _errorMessage = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = error.toString();
+      });
+    }
   }
 
   /// Every assessment in the feed, flattened and sorted by due date.
-  List<_Entry> get _entries {
+  List<_Entry> get _allEntries {
     final data = _calendarData;
     if (data == null) return const [];
 
+    // A feed can carry the same assignment more than once (duplicate VEVENTs
+    // in the ICS, or an overlap between cached and freshly fetched data).
+    // Collapse those by stable id so the list never shows the same row twice.
     final entries = <_Entry>[];
+    final seen = <String>{};
     data.forEach((date, item) {
       for (final assessment in item.assessments) {
-        entries.add(_Entry(assessment: assessment, date: date));
+        final entry = _Entry(assessment: assessment, date: date);
+        if (seen.add(entry.id)) entries.add(entry);
       }
     });
 
@@ -138,9 +172,30 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
     return entries;
   }
 
+  /// The entries that fall inside the month currently being shown.
+  List<_Entry> get _monthEntries {
+    final month = _selectedMonth;
+    return _allEntries
+        .where(
+          (entry) =>
+              entry.date.year == month.year && entry.date.month == month.month,
+        )
+        .toList();
+  }
+
+  /// Months offered by the picker: every month the feed has work for, plus the
+  /// current one so opening on "now" is always possible.
+  List<DateTime> get _monthsWithEntries {
+    final months = <DateTime>{_monthOf(_today)};
+    for (final entry in _allEntries) {
+      months.add(_monthOf(entry.date));
+    }
+    return months.toList()..sort((a, b) => a.compareTo(b));
+  }
+
   _Bucket _bucketFor(_Entry entry) {
-    if (_completed.contains(entry.id)) return _Bucket.done;
-    final days = entry.daysUntilDue;
+    if (_isDone(entry)) return _Bucket.done;
+    final days = entry.daysUntilDue(_today);
     if (days < 0) return _Bucket.overdue;
     if (days == 0) return _Bucket.today;
     if (days == 1) return _Bucket.tomorrow;
@@ -151,13 +206,6 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
   // ---------------------------------------------------------------------------
   // Presentation helpers
   // ---------------------------------------------------------------------------
-
-  /// Deterministic colour per class so the same subject always looks the same.
-  Color _colorForClass(String name) {
-    if (name.trim().isEmpty) return Colors.grey;
-    final hue = (name.hashCode.abs() % 360).toDouble();
-    return HSLColor.fromAHSL(1.0, hue, 0.42, 0.48).toColor();
-  }
 
   String _bucketTitle(_Bucket bucket) {
     switch (bucket) {
@@ -176,24 +224,15 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
     }
   }
 
-  Color _bucketAccent(_Bucket bucket, BuildContext context) {
-    if (bucket == _Bucket.overdue || bucket == _Bucket.today) {
-      return Theme.of(context).colorScheme.error;
-    }
-    if (bucket == _Bucket.done) {
-      return Theme.of(
-        context,
-      ).colorScheme.onSurface.withValues(alpha: 0.45);
-    }
-    return Theme.of(context).colorScheme.primary;
-  }
+  String _monthLabel(DateTime month) => DateFormat('MMM yyyy').format(month);
 
-  String _dueLabel(_Entry entry) {
-    return DateFormat('EEE d MMM').format(entry.date);
-  }
+  String _monthLabelLong(DateTime month) =>
+      DateFormat('MMMM yyyy').format(month);
+
+  String _dueLabel(_Entry entry) => DateFormat('EEE d MMM').format(entry.date);
 
   String _countdownLabel(_Entry entry) {
-    final days = entry.daysUntilDue;
+    final days = entry.daysUntilDue(_today);
     if (days < 0) {
       final n = days.abs();
       return n == 1 ? '1 day ago' : '$n days ago';
@@ -223,8 +262,10 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
               )
             else if (_errorMessage != null)
               _buildErrorState()
-            else if (_entries.isEmpty)
+            else if (_allEntries.isEmpty)
               _buildEmptyState()
+            else if (_monthEntries.isEmpty)
+              _buildEmptyMonthState()
             else
               ..._buildSections(),
             // Clearance so the floating nav bar never covers the last card.
@@ -237,10 +278,9 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
 
   Widget _buildAppBar() {
     final theme = Theme.of(context);
-    final completedCount = _entries
-        .where((e) => _completed.contains(e.id))
-        .length;
-    final outstanding = _entries.length - completedCount;
+    final monthEntries = _monthEntries;
+    final completedCount = monthEntries.where(_isDone).length;
+    final outstanding = monthEntries.length - completedCount;
 
     return SliverAppBar(
       pinned: true,
@@ -260,38 +300,9 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
         background: Container(color: theme.colorScheme.surface),
       ),
       actions: [
-        if (_entries.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Center(
-              child: FilterChip(
-                label: Text(
-                  _showCompleted ? 'Hide done' : 'Show done ($completedCount)',
-                ),
-                selected: _showCompleted,
-                onSelected: (value) {
-                  setState(() => _showCompleted = value);
-                },
-                backgroundColor: theme.colorScheme.surface,
-                selectedColor: theme.colorScheme.primary.withValues(
-                  alpha: 0.15,
-                ),
-                checkmarkColor: theme.colorScheme.primary,
-                side: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.3),
-                ),
-                labelStyle: TextStyle(
-                  fontSize: 12,
-                  color: _showCompleted
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                ),
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-          ),
+        if (_allEntries.isNotEmpty) _buildMonthPicker(theme),
       ],
-      bottom: _entries.isEmpty
+      bottom: _allEntries.isEmpty
           ? null
           : PreferredSize(
               preferredSize: const Size.fromHeight(28),
@@ -317,90 +328,214 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
     );
   }
 
-  List<Widget> _buildSections() {
-    final theme = Theme.of(context);
+  /// Picks which month's work is on screen. A year-long feed would otherwise
+  /// open on hundreds of rows.
+  Widget _buildMonthPicker(ThemeData theme) {
+    final months = _monthsWithEntries;
 
-    // Group entries, preserving the order the buckets should appear in.
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: Center(
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<DateTime>(
+            value: _selectedMonth,
+            isDense: true,
+            borderRadius: BorderRadius.circular(12),
+            dropdownColor: theme.colorScheme.surfaceContainer,
+            icon: Icon(
+              Icons.expand_more,
+              size: 18,
+              color: theme.colorScheme.primary,
+            ),
+            // The trigger stays in the brand blue; the menu itself reads in
+            // normal body colour so the options stay legible.
+            selectedItemBuilder: (context) => [
+              for (final month in months)
+                Center(
+                  child: Text(
+                    _monthLabel(month),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+            ],
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w500,
+              color: theme.colorScheme.onSurface,
+            ),
+            items: [
+              for (final month in months)
+                DropdownMenuItem<DateTime>(
+                  value: month,
+                  child: Text(_monthLabel(month)),
+                ),
+            ],
+            onChanged: (month) {
+              if (month == null) return;
+              setState(() => _selectedMonth = month);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildSections() {
     const order = [
       _Bucket.overdue,
       _Bucket.today,
       _Bucket.tomorrow,
       _Bucket.thisWeek,
       _Bucket.later,
-      _Bucket.done,
     ];
 
     final grouped = <_Bucket, List<_Entry>>{};
-    for (final entry in _entries) {
-      final bucket = _bucketFor(entry);
-      if (bucket == _Bucket.done && !_showCompleted) continue;
-      grouped.putIfAbsent(bucket, () => []).add(entry);
+    final done = <_Entry>[];
+    for (final entry in _monthEntries) {
+      if (_isDone(entry)) {
+        done.add(entry);
+        continue;
+      }
+      grouped.putIfAbsent(_bucketFor(entry), () => []).add(entry);
     }
 
     final widgets = <Widget>[];
     for (final bucket in order) {
       final items = grouped[bucket];
       if (items == null || items.isEmpty) continue;
+      widgets.add(_buildSectionHeader(_bucketTitle(bucket), items.length));
+      widgets.add(_buildCardList(items));
+    }
 
-      widgets.add(
-        SliverToBoxAdapter(
+    if (done.isNotEmpty) {
+      widgets.add(_buildCompletedHeader(done.length));
+      // Collapsed by default: finished work is reference material, not a
+      // to-do list, but it should never be impossible to find again.
+      if (_completedExpanded) {
+        widgets.add(_buildCardList(done, done: true));
+      }
+    }
+
+    return widgets;
+  }
+
+  Widget _buildSectionHeader(String title, int count) {
+    final theme = Theme.of(context);
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+        child: Row(
+          children: [
+            _sectionDot(theme),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 13,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompletedHeader(int count) {
+    final theme = Theme.of(context);
+    return SliverToBoxAdapter(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            setState(() => _completedExpanded = !_completedExpanded);
+          },
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
             child: Row(
               children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: _bucketAccent(bucket, context),
-                    shape: BoxShape.circle,
-                  ),
-                ),
+                _sectionDot(theme),
                 const SizedBox(width: 8),
                 Text(
-                  _bucketTitle(bucket),
+                  _bucketTitle(_Bucket.done),
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: _bucketAccent(bucket, context),
+                    color: theme.colorScheme.primary,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '${items.length}',
+                  '$count',
                   style: TextStyle(
                     fontSize: 13,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  _completedExpanded ? 'Hide' : 'Show',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _completedExpanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  child: Icon(
+                    Icons.expand_more,
+                    size: 20,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
               ],
             ),
           ),
         ),
-      );
-
-      widgets.add(
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverList.separated(
-            itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 10),
-            itemBuilder: (context, index) =>
-                _buildCard(items[index], bucket),
-          ),
-        ),
-      );
-    }
-
-    return widgets;
+      ),
+    );
   }
 
-  Widget _buildCard(_Entry entry, _Bucket bucket) {
+  Widget _sectionDot(ThemeData theme) => Container(
+    width: 8,
+    height: 8,
+    decoration: BoxDecoration(
+      color: theme.colorScheme.primary,
+      shape: BoxShape.circle,
+    ),
+  );
+
+  Widget _buildCardList(List<_Entry> items, {bool done = false}) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverList.separated(
+        itemCount: items.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
+        itemBuilder: (context, index) =>
+            _buildCard(items[index], isDone: done || _isDone(items[index])),
+      ),
+    );
+  }
+
+  Widget _buildCard(_Entry entry, {required bool isDone}) {
     final theme = Theme.of(context);
     final assessment = entry.assessment;
-    final isDone = _completed.contains(entry.id);
-    final classColor = _colorForClass(assessment.className);
-    final accent = _bucketAccent(bucket, context);
+    final accent = theme.colorScheme.primary;
 
     return Material(
       color: theme.colorScheme.surface,
@@ -421,8 +556,14 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Class colour spine
-                  Container(width: 5, color: isDone ? Colors.grey : classColor),
+                  // One accent colour throughout, so the spine reads as this
+                  // app's blue rather than as an arbitrary per-subject hue.
+                  Container(
+                    width: 5,
+                    color: isDone
+                        ? accent.withValues(alpha: 0.25)
+                        : accent,
+                  ),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
@@ -439,9 +580,9 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: isDone ? accent : accent.withValues(
-                                  alpha: 0.5,
-                                ),
+                                color: isDone
+                                    ? accent
+                                    : accent.withValues(alpha: 0.5),
                                 width: 1.8,
                               ),
                               color: isDone ? accent : Colors.transparent,
@@ -450,7 +591,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
                                 ? Icon(
                                     Icons.check,
                                     size: 14,
-                                    color: theme.colorScheme.surface,
+                                    color: theme.colorScheme.onPrimary,
                                   )
                                 : null,
                           ),
@@ -461,7 +602,9 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  assessment.title,
+                                  assessment.title.trim().isEmpty
+                                      ? 'Untitled assignment'
+                                      : assessment.title,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -488,14 +631,14 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
                                           fontSize: 12.5,
-                                          color: classColor,
+                                          color: accent,
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      _dueLabel(entry),
+                                      'Due ${_dueLabel(entry)}',
                                       style: TextStyle(
                                         fontSize: 12.5,
                                         color: theme.colorScheme.onSurface
@@ -545,39 +688,70 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
     final theme = Theme.of(context);
     return SliverFillRemaining(
       hasScrollBody: false,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.assignment_turned_in_outlined,
-                size: 64,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.28),
+      child: _centeredMessage(
+        theme,
+        icon: Icons.assignment_turned_in_outlined,
+        title: 'No assignments yet',
+        body:
+            'Assignments come from your school calendar feed. '
+            'Pull down to refresh.',
+      ),
+    );
+  }
+
+  /// The month is empty but other months in the feed are not: say so, rather
+  /// than showing the same "no assignments" copy and looking broken.
+  Widget _buildEmptyMonthState() {
+    final theme = Theme.of(context);
+    return SliverFillRemaining(
+      hasScrollBody: false,
+      child: _centeredMessage(
+        theme,
+        icon: Icons.event_available_outlined,
+        title: 'Nothing due in ${_monthLabelLong(_selectedMonth)}',
+        body: 'Pick another month from the list above, or pull down to refresh.',
+      ),
+    );
+  }
+
+  Widget _centeredMessage(
+    ThemeData theme, {
+    required IconData icon,
+    required String title,
+    required String body,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 64,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.28),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
               ),
-              const SizedBox(height: 18),
-              Text(
-                'No assignments yet',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
-                ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              body,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.4,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Assignments come from your school calendar feed. '
-                'Pull down to refresh.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  height: 1.4,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
