@@ -161,6 +161,74 @@ attached per route (e.g. `"POST", "/api/v1/ads/prefs"`).
 - Streams `text/event-stream` without buffering and without compression.
 - Falls back to bundled fixtures when the orchestrator is unreachable, so the UI is useful and
   testable even when the app is closed.
+- Composes its own bodies for the two writes (the outline below), so it drops `content-length`
+  and `content-encoding` from the forwarded headers there. The proxy keeps them because it
+  forwards the same bytes; a request carrying a *different* body than the header describes
+  would be truncated or would hang.
+
+## The write contract (extracted from the shipped bundles)
+
+Two writes: a chat turn, and a decision on a git invitation. Both were read out of the bundled
+code rather than guessed, and both are exercised by tests against a stand-in orchestrator.
+
+### Chat is the AI SDK, not a JSON endpoint
+
+The renderer's chat is the Vercel AI SDK's `HttpChatTransport` (it, and the whole AI SDK, are
+bundled inside `orchestrator.js`), whose default `api` is `/api/chat`:
+
+```js
+HttpChatTransport = class { constructor({ api: api2 = "/api/chat", ... })
+  ...
+  body: { ...resolvedBody, ...options.body, id: options.chatId, messages: options.messages,
+          trigger: options.trigger, messageId: options.messageId }
+```
+
+- `POST /api/chat` with `content-type: application/json`.
+- Body `{ id, messages, trigger, messageId }`, where `id` is the **thread** id. The transport
+  always assigns `trigger`/`messageId` but they are frequently `undefined`, and `JSON.stringify`
+  drops undefined properties — so a plain send serialises as `{ id, messages }`.
+- A user turn sets `trigger: "submit-message"` with `messageId` = the id of the message being
+  sent. That pair is a literal in the bundle's own `sendMessage`:
+  `makeRequest({ trigger: "submit-message", messageId: this.lastMessage?.id, ... })`.
+- `messages` are UI messages with typed parts, as the bundle builds them:
+  `{ parts: [{ type: "text", text }] }`.
+
+The reply is an **AI SDK UI message stream**, pinned from the orchestrator's own writer:
+
+```js
+JsonToSseTransformStream   →  enqueue(`data: ${JSON.stringify(part)}\n\n`)
+                              flush  →  `data: [DONE]\n\n`
+UI_MESSAGE_STREAM_HEADERS   =  { "content-type": "text/event-stream", "cache-control": "no-cache",
+                                 connection: "keep-alive", "x-vercel-ai-ui-message-stream": "v1",
+                                 "x-accel-buffering": "no" }
+```
+
+Prose arrives only as `text-delta` chunks. The bundle contains **both** shapes of that chunk —
+the UI message stream's `{ type, id, delta }` and the model stream's `{ type, text }` — so
+Skinbuff's parser reads `delta ?? text` instead of betting on one, and ignores chunk types it
+does not know rather than failing the turn.
+
+### "Approvals" are git invitations
+
+The app's approval flow is an *ad invitation* to a git action. These are the routes its renderer
+calls and the bodies it sends, extracted verbatim:
+
+```
+POST /api/ad/invitation/git/inspect   { threadId, invitationId }
+POST /api/ad/invitation/git/approve   { threadId, invitationId, token, files, identity, confirmed: true }
+POST /api/ad/invitation/git/decline   { threadId, invitationId }
+```
+
+`approve` echoes a `token` that only an inspection returns, and sets `confirmed: true` — the
+app's own record that the user saw what they were approving. A caller without that token cannot
+approve, and Skinbuff does not pretend otherwise. The bundle's approval vocabulary is
+`approvalId` / `approvalResponse.approved` / `signature`, and the stream carries
+`approval-requested` and `approval-responded` parts.
+
+### A thread comes from `/api/threads`
+
+`POST /api/threads { projectPath }` — the same call the renderer makes, and the first read that
+returns the id a send needs.
 
 ## Known limits of this pinning
 
@@ -171,8 +239,15 @@ attached per route (e.g. `"POST", "/api/v1/ads/prefs"`).
   outside the app and is **not** invented here. Skinbuff reads them defensively (see
   `src/state/board.mjs`) and the shapes are to be recorded the first time a real attached
   session is available.
-- **Mutation shapes are not pinned** for the same reason. Skinbuff's first pass writes nothing
-  to the orchestrator.
+- **The write routes and bodies are pinned, but unexercised against a live session.** They were
+  read out of the shipped bundles, and the tests assert Skinbuff sends exactly them to a stand-in
+  orchestrator that records the request. What has *not* happened is a completed turn or a real
+  invitation decision against the running app, because that needs the app relaunched with
+  `FREEBUFF_DEV_UI=1` in the user's own session. `trigger: "submit-message"` is the AI SDK's own
+  literal rather than an observation of an accepted turn, and the exact JSON each write route
+  returns is still unknown — so a refusal is reported as a refusal and a reply is never invented.
+- **Incremental replies are not streamed into the UI yet.** The reply's text is published to the
+  skin's stream once the turn completes, not delta by delta as it arrives.
 - **`/healthz` needs the header form**: `GET /healthz` with `x-freebuff-launch-id` answers
   `200 {"ok":true,"launchId":…,"pid":…,"port":…}` to the shell. Skinbuff uses a reachability
   probe instead: it treats *any* HTTP answer on 8787 as "an orchestrator is listening" and

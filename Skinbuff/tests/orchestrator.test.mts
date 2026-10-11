@@ -2,12 +2,17 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
 import {
+  buildChatBody,
+  CHAT_PATH,
   followEventStream,
+  GIT_INVITATION,
   orchestratorBaseUrl,
   parseSseFrames,
+  parseUiMessageStream,
   probeOrchestrator,
   readLiveSnapshot,
   requestJson,
+  toUiMessages,
 } from '../src/api/orchestrator.mjs';
 
 /** A `fetch` that answers from a script, and records what it was asked for. */
@@ -218,5 +223,96 @@ describe('followEventStream', () => {
         }),
       /401/,
     );
+  });
+});
+
+describe('the chat body the AI SDK would send', () => {
+  test('maps the skin roles onto the protocol and keeps one text part per message', () => {
+    const messages = toUiMessages([
+      { id: 'm1', role: 'user', text: 'mark the class' },
+      { id: 'm2', role: 'lead', text: 'on it' },
+      { id: 'm3', role: 'agent', text: 'done' },
+      { id: 'm4', role: 'system', text: 'attached' },
+      { id: 'm5', role: 'user', text: '   ' },
+    ]);
+    assert.deepEqual(
+      messages.map((message) => [message.id, message.role]),
+      [
+        ['m1', 'user'],
+        ['m2', 'assistant'],
+        ['m3', 'assistant'],
+        ['m4', 'system'],
+      ],
+      'the Lead and the agents are both the assistant, and an empty message is dropped',
+    );
+    assert.deepEqual(messages[0]!.parts, [{ type: 'text', text: 'mark the class' }]);
+  });
+
+  test('serialises as { id, messages, trigger, messageId } exactly as the transport builds it', () => {
+    const body = buildChatBody({
+      threadId: 'th-1',
+      messages: [{ id: 'local-1', role: 'user', text: 'hi' }],
+      trigger: 'submit-message',
+      messageId: 'local-1',
+    });
+    assert.deepEqual(JSON.parse(JSON.stringify(body)), {
+      id: 'th-1',
+      messages: [{ id: 'local-1', role: 'user', parts: [{ type: 'text', text: 'hi' }] }],
+      trigger: 'submit-message',
+      messageId: 'local-1',
+    });
+
+    // The transport assigns trigger/messageId unconditionally and JSON.stringify drops
+    // undefined, so a send without them must not carry nulls.
+    const plain = JSON.stringify(buildChatBody({ threadId: 'th-1', messages: [] }));
+    assert.equal(plain, '{"id":"th-1","messages":[]}');
+  });
+
+  test('the pinned routes are the ones the shipped renderer calls', () => {
+    assert.equal(CHAT_PATH, '/api/chat');
+    assert.deepEqual(GIT_INVITATION, {
+      inspect: '/api/ad/invitation/git/inspect',
+      approve: '/api/ad/invitation/git/approve',
+      decline: '/api/ad/invitation/git/decline',
+    });
+  });
+});
+
+describe('parseUiMessageStream', () => {
+  /** The frame layout `JsonToSseTransformStream` writes. */
+  const part = (value: unknown) => `data: ${JSON.stringify(value)}\n\n`;
+
+  test('concatenates text-delta chunks and sees the sentinel', () => {
+    const stream =
+      part({ type: 'start' }) +
+      part({ type: 'text-start', id: 't1' }) +
+      part({ type: 'text-delta', id: 't1', delta: 'Ship' }) +
+      part({ type: 'text-delta', id: 't1', delta: ' it.' }) +
+      part({ type: 'text-end', id: 't1' }) +
+      part({ type: 'finish' }) +
+      'data: [DONE]\n\n';
+    assert.deepEqual(parseUiMessageStream(stream), { text: 'Ship it.', error: null, finished: true });
+  });
+
+  test('accepts the model-stream text field too, because both shapes exist in the bundle', () => {
+    const stream = part({ type: 'text-delta', text: 'from the model stream' }) + 'data: [DONE]\n\n';
+    assert.equal(parseUiMessageStream(stream).text, 'from the model stream');
+  });
+
+  test('reports an error part without inventing text, and ignores unknown chunks', () => {
+    const stream =
+      part({ type: 'text-delta', id: 't1', delta: 'partial' }) +
+      part({ type: 'some-future-chunk', whatever: true }) +
+      part({ type: 'error', errorText: 'model refused' }) +
+      'data: [DONE]\n\n';
+    assert.deepEqual(parseUiMessageStream(stream), { text: 'partial', error: 'model refused', finished: true });
+  });
+
+  test('survives a partial or malformed stream instead of throwing', () => {
+    for (const input of ['', 'data: {"type":"text-delta","id":"t1"', 'data: not json\n\n', ': comment\n\n']) {
+      const result = parseUiMessageStream(input);
+      assert.equal(typeof result.text, 'string');
+      assert.equal(result.finished, false);
+    }
   });
 });

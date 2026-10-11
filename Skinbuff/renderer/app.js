@@ -136,7 +136,11 @@ async function send(text) {
   const trimmed = text.trim();
   if (!trimmed) return;
 
-  const id = `local-${(localCounter += 1)}`;
+  // Unique per message, not just per page load. The server journals whatever id this
+  // carries and `/state` replays that journal, so a counter that restarted at 1 after a
+  // reload would collide with an already-journaled id — and the reducer, which dedupes by
+  // id, would silently drop the new turn from the conversation.
+  const id = `local-${Date.now().toString(36)}-${(localCounter += 1)}`;
   // Show it now; the server echoes this same id, and the reducer ignores the echo.
   state = applyEvent(state, { type: 'message', message: { id, role: 'user', text: trimmed } });
   ui.busy = true;
@@ -148,15 +152,18 @@ async function send(text) {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ text: trimmed, id }),
     });
+    const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      const detail = await response.json().catch(() => null);
-      setStatus(`Send failed: ${detail && detail.error ? detail.error : `HTTP ${response.status}`}`, 'error');
+      // A refused send is reported as refused, and no reply is invented for it.
+      setStatus(`Send failed: ${payload && payload.error ? payload.error : `HTTP ${response.status}`}`, 'error');
+    } else if (payload && payload.error) {
+      // The turn reached Freebuff but the agent reported a problem. Saying so beats a
+      // cheerful "sent" over a reply that came back broken.
+      setStatus(`Freebuff reported: ${payload.error}`, 'error');
+    } else if (payload && payload.mode === 'live') {
+      setStatus('Sent to Freebuff. The Lead\u2019s reply is in the conversation.');
     } else {
-      setStatus(
-        state.mode === 'live'
-          ? 'Sent. The Lead is on it — progress streams into the board.'
-          : 'Sent to the demo Lead. Run `npm run attach` to reach the real agent.',
-      );
+      setStatus('Sent to the demo Lead. Run `npm run attach` to reach the real agent.');
     }
   } catch (error) {
     setStatus(`Send failed: ${error instanceof Error ? error.message : String(error)}`, 'error');
@@ -171,21 +178,38 @@ async function send(text) {
  * @param {'allow' | 'deny'} decision
  */
 async function decide(id, decision) {
-  state = applyEvent(state, { type: 'approval.resolved', approval: { id, decision } });
+  // Not applied optimistically. When a real invitation is behind this, the decision is a
+  // write to Freebuff that can be refused, and marking it resolved before the server (and
+  // therefore the app) agrees would show the user an approval that never happened.
+  const approval = state.approvals.find((entry) => entry.id === id);
   ui.busy = true;
   render();
   try {
     const response = await fetch(`/api/skinbuff/approvals/${encodeURIComponent(id)}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ decision }),
+      body: JSON.stringify({
+        decision,
+        // The identity of the invitation, when this one is real. The server falls back to
+        // the workspace when these are absent.
+        ...(approval?.invitationId ? { invitationId: approval.invitationId } : {}),
+        ...(approval?.threadId ? { threadId: approval.threadId } : {}),
+        ...(approval?.token ? { token: approval.token } : {}),
+      }),
     });
-    const detail = await response.json().catch(() => null);
+    const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      setStatus(`Decision failed: ${detail && detail.error ? detail.error : `HTTP ${response.status}`}`, 'error');
-    } else {
-      setStatus(detail && detail.detail ? detail.detail : `Recorded: ${decision}.`);
+      setStatus(`Decision failed: ${payload && payload.error ? payload.error : `HTTP ${response.status}`}`, 'error');
+      return;
     }
+    state = applyEvent(state, { type: 'approval.resolved', approval: { id, decision } });
+    setStatus(
+      payload && payload.mode === 'live'
+        ? `Sent to Freebuff: ${decision === 'deny' ? 'declined' : 'approved'}.`
+        : payload && payload.detail
+          ? payload.detail
+          : `Recorded: ${decision}.`,
+    );
   } catch (error) {
     setStatus(`Decision failed: ${error instanceof Error ? error.message : String(error)}`, 'error');
   } finally {

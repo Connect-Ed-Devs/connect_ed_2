@@ -26,7 +26,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { demoDecision, demoEvents, demoReply, demoSnapshot } from '../src/api/fixtures.mjs';
-import { followEventStream, orchestratorBaseUrl, probeOrchestrator, readLiveSnapshot } from '../src/api/orchestrator.mjs';
+import {
+  createThread,
+  decideGitInvitation,
+  followEventStream,
+  orchestratorBaseUrl,
+  probeOrchestrator,
+  readLiveSnapshot,
+  sendChat,
+  threadIdFrom,
+} from '../src/api/orchestrator.mjs';
 import { applyEvent, classifyEvent, deriveStats, normalizeSnapshot } from '../src/state/board.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -96,14 +105,21 @@ function errorMessage(error) {
  * app's renderer, and `origin` is what its origin guard compares against the value the
  * shell told it to expect. Drop either and every read answers 401 or 403.
  *
+ * `dropBodyHeaders` exists for the writes Skinbuff composes itself. The proxy can copy
+ * `content-length` because it forwards the same bytes; a write that builds a *different*
+ * body cannot, or the orchestrator would either read a truncated request or wait forever
+ * for bytes that are not coming.
+ *
  * @param {http.IncomingMessage} req
+ * @param {{ dropBodyHeaders?: boolean }} [options]
  */
-function forwardHeaders(req) {
+function forwardHeaders(req, options = {}) {
   /** @type {Record<string, string | string[]>} */
   const headers = {};
   for (const [key, value] of Object.entries(req.headers)) {
     if (value === undefined) continue;
     if (key === 'host' || HOP_BY_HOP.has(key)) continue;
+    if (options.dropBodyHeaders === true && (key === 'content-length' || key === 'content-encoding')) continue;
     headers[key] = value;
   }
   return headers;
@@ -575,13 +591,89 @@ export function createSkinbuffServer(options = {}) {
           journal.push(userEvent);
           publish(userEvent);
         }
-        const reply = { ...demoReply(text), id: `lead-${(serverIds += 1)}` };
-        const leadEvent = classifyEvent({ type: 'message', message: reply });
-        if (leadEvent) {
-          journal.push(leadEvent);
-          publish(leadEvent);
+
+        // The page's own headers, so the launch cookie authenticates this call exactly as
+        // it authenticates the shipped renderer's own send. The body headers are dropped
+        // because the body below is Skinbuff's, not the page's.
+        const writeHeaders = forwardHeaders(req, { dropBodyHeaders: true });
+        const state = await currentState(writeHeaders);
+
+        if (state.mode !== 'live') {
+          const reply = { ...demoReply(text), id: `lead-${(serverIds += 1)}` };
+          const leadEvent = classifyEvent({ type: 'message', message: reply });
+          if (leadEvent) {
+            journal.push(leadEvent);
+            publish(leadEvent);
+          }
+          sendJson(res, 202, { accepted: true, mode: 'demo', reply });
+          return;
         }
-        sendJson(res, 202, { accepted: true, reply });
+
+        // A send needs a thread. Use the one the reads returned, or make the thread the
+        // app's own renderer would have made before it could send anything.
+        let threadId = state.workspace.threadId;
+        if (!threadId && state.workspace.project) {
+          const created = await createThread({
+            baseUrl: orchestratorUrl,
+            fetchImpl,
+            headers: writeHeaders,
+            projectPath: state.workspace.project,
+          });
+          if (created.ok) threadId = threadIdFrom(created.data);
+        }
+        if (!threadId) {
+          sendJson(res, 502, {
+            accepted: false,
+            mode: 'live',
+            error: 'The orchestrator returned no thread id and a thread could not be created, so there is nothing to send to.',
+          });
+          return;
+        }
+
+        const result = await sendChat({
+          baseUrl: orchestratorUrl,
+          fetchImpl,
+          headers: writeHeaders,
+          threadId,
+          // The whole conversation, as the app's transport sends it. The user's turn is
+          // already in here — it was journaled above, and the journal is applied to the
+          // state — so appending it again would send the same turn to the agent twice.
+          messages: state.messages.some((message) => message.id === userMessageId)
+            ? state.messages
+            : [...state.messages, { id: userMessageId, role: 'user', text }],
+          trigger: 'submit-message',
+          messageId: userMessageId,
+        });
+
+        if (!result.ok) {
+          // A refusal is reported as a refusal. Writing a scripted reply here would be the
+          // exact lie the demo/live split exists to prevent.
+          const status = typeof result.status === 'number' && result.status >= 400 ? result.status : 502;
+          sendJson(res, status, {
+            accepted: false,
+            mode: 'live',
+            error: result.error ?? 'the orchestrator refused the message',
+          });
+          return;
+        }
+
+        const replyText =
+          result.text.trim() || (result.error ? `The agent reported an error: ${result.error}` : '');
+        const reply = { id: `lead-${(serverIds += 1)}`, role: 'lead', agent: 'Lead', text: replyText, at: '' };
+        if (replyText) {
+          const leadEvent = classifyEvent({ type: 'message', message: reply });
+          if (leadEvent) {
+            journal.push(leadEvent);
+            publish(leadEvent);
+          }
+        }
+        sendJson(res, 202, {
+          accepted: true,
+          mode: 'live',
+          reply,
+          finished: result.finished,
+          error: result.error,
+        });
         return;
       }
 
@@ -603,15 +695,89 @@ export function createSkinbuffServer(options = {}) {
         }
         const record = body && typeof body === 'object' ? /** @type {Record<string, unknown>} */ (body) : {};
         const decision = record.decision === 'deny' ? 'deny' : 'allow';
+        const approvalId = decodeURIComponent(approvalMatch[1]);
+
+        // The page's headers carry the launch cookie, which is what authorises a write.
+        const writeHeaders = forwardHeaders(req, { dropBodyHeaders: true });
+        const state = await currentState(writeHeaders);
+
+        if (state.mode !== 'live') {
+          const event = classifyEvent({
+            type: 'approval.resolved',
+            approval: { id: approvalId, decision },
+          });
+          if (event) {
+            journal.push(event);
+            publish(event);
+          }
+          sendJson(res, 202, { accepted: true, mode: 'demo', decision, detail: demoDecision(decision) });
+          return;
+        }
+
+        // In live mode this has to be a real invitation, decided at its real route. The
+        // renderer may already know the identity (it renders the approval), so the request
+        // body is preferred and the workspace is the fallback.
+        const known = state.approvals.find((approval) => approval.id === approvalId);
+        const invitationId =
+          (typeof record.invitationId === 'string' && record.invitationId) || known?.invitationId || '';
+        const threadId =
+          (typeof record.threadId === 'string' && record.threadId) ||
+          known?.threadId ||
+          state.workspace.threadId ||
+          '';
+        const token = (typeof record.token === 'string' && record.token) || known?.token || '';
+
+        if (!invitationId || !threadId) {
+          // Nothing is journaled: the decision has not happened, and pretending otherwise
+          // would leave the skin claiming an approval the app never received.
+          sendJson(res, 409, {
+            accepted: false,
+            mode: 'live',
+            error: `Approval ${approvalId} has no live invitation behind it, so there is nothing to decide.`,
+          });
+          return;
+        }
+
+        const result = await decideGitInvitation({
+          baseUrl: orchestratorUrl,
+          fetchImpl,
+          headers: writeHeaders,
+          // The skin's vocabulary is allow/deny; the app's route is approve/decline. The
+          // translation happens only here, and the response keeps the skin's word so the
+          // renderer and the reducer never have to know about the app's.
+          decision: decision === 'deny' ? 'decline' : 'approve',
+          threadId,
+          invitationId,
+          token: token || undefined,
+          files: record.files,
+          identity: record.identity,
+        });
+
+        if (!result.ok) {
+          const status = typeof result.status === 'number' && result.status >= 400 ? result.status : 502;
+          sendJson(res, status, {
+            accepted: false,
+            mode: 'live',
+            error: result.error ?? 'the orchestrator refused the decision',
+          });
+          return;
+        }
+
         const event = classifyEvent({
           type: 'approval.resolved',
-          approval: { id: decodeURIComponent(approvalMatch[1]), decision },
+          approval: { id: approvalId, decision },
         });
         if (event) {
           journal.push(event);
           publish(event);
         }
-        sendJson(res, 202, { accepted: true, decision, detail: demoDecision(decision) });
+        sendJson(res, 202, {
+          accepted: true,
+          mode: 'live',
+          decision,
+          invitationId,
+          response: result.data,
+        });
         return;
       }
 

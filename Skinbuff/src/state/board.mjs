@@ -84,12 +84,15 @@ export const AGENT_STATUSES = ['idle', 'working', 'blocked', 'done'];
  * @property {'low' | 'medium' | 'high'} risk
  * @property {string} at
  * @property {'pending' | 'allowed' | 'denied'} status
+ * @property {string} threadId      The thread the invitation belongs to, when real.
+ * @property {string} invitationId  The app's own id for it; a decision needs this.
+ * @property {string} token         The inspection token an approval must echo back.
  */
 
 /**
  * @typedef {object} SkWorkspaceState
  * @property {'live' | 'demo'} mode
- * @property {{ name: string, project: string, branch: string, startedAt: string }} workspace
+ * @property {{ name: string, project: string, branch: string, startedAt: string, threadId: string }} workspace
  * @property {{ name: string, model: string }} lead
  * @property {SkMessage[]} messages
  * @property {SkAgent[]} agents
@@ -103,7 +106,7 @@ export const AGENT_STATUSES = ['idle', 'working', 'blocked', 'done'];
 export function emptyState() {
   return {
     mode: 'demo',
-    workspace: { name: 'Skinbuff', project: '', branch: '', startedAt: '' },
+    workspace: { name: 'Skinbuff', project: '', branch: '', startedAt: '', threadId: '' },
     lead: { name: 'Lead', model: '' },
     messages: [],
     agents: [],
@@ -209,6 +212,7 @@ export function normalizeSnapshot(snapshot, mode) {
     project: asText(workspace.project ?? workspace.path ?? root.projectPath),
     branch: asText(workspace.branch ?? root.branch),
     startedAt: asText(workspace.startedAt ?? root.startedAt),
+    threadId: asText(workspace.threadId ?? root.threadId),
   };
 
   const lead = asRecord(root.lead);
@@ -274,6 +278,9 @@ export function normalizeSnapshot(snapshot, mode) {
         risk: toRisk(record.risk),
         at: asText(record.at ?? record.requestedAt),
         status: resolved,
+        threadId: asText(record.threadId),
+        invitationId: asText(record.invitationId ?? record.approvalId),
+        token: asText(record.token),
       };
     })
     .filter((approval) => approval.id);
@@ -494,6 +501,9 @@ export function applyEvent(state, event) {
         risk: toRisk(approval.risk),
         at: asText(approval.at ?? approval.requestedAt),
         status: 'pending',
+        threadId: asText(approval.threadId),
+        invitationId: asText(approval.invitationId ?? approval.approvalId),
+        token: asText(approval.token),
       },
     ];
     return next;
@@ -519,6 +529,7 @@ export function applyEvent(state, event) {
       project: asText(workspace.project ?? workspace.path) || next.workspace.project,
       branch: asText(workspace.branch) || next.workspace.branch,
       startedAt: asText(workspace.startedAt) || next.workspace.startedAt,
+      threadId: asText(workspace.threadId) || next.workspace.threadId,
     };
     return next;
   }

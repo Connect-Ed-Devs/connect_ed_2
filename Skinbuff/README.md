@@ -22,6 +22,11 @@ Surfaces: the **chat** with the Lead, a **board** of agent tasks across four col
 **team** roster with per-agent activity, and an **approvals** queue for the decisions that
 are waiting on you. Terminals and the ad surface are deliberately absent.
 
+Both actions are real when the app is attached. A message you send becomes a real turn at
+`/api/chat` and the reply in the conversation is what the agent actually returned; an
+approval becomes a real decision at the app's own git-invitation route. See
+[What the two actions do](#what-the-two-actions-do).
+
 ## Running it
 
 ```bash
@@ -76,6 +81,34 @@ Reopen Freebuff normally and the shipped renderer is back, because nothing in th
 directory was ever written to: not a file, not a setting, not the theme, not a launch id.
 `npm run attach` again to reattach.
 
+## What the two actions do
+
+Both were extracted from the shipped bundles rather than guessed, and both are pinned in
+[docs/api-contract.md](docs/api-contract.md).
+
+- **Chat** is the Vercel AI SDK's `HttpChatTransport`, so sending is `POST /api/chat` with
+the body that transport builds (`{ id, messages, trigger, messageId }`, messages as
+`{ id, role, parts: [{ type: 'text', text }] }`) and the reply is an AI SDK UI message
+stream. Skinbuff reads the prose out of its `text-delta` chunks and puts *that* in the
+conversation. It needs a thread, so it uses the one the reads returned, or creates one the
+way the app's renderer does.
+- **Approvals** are git invitations: `POST /api/ad/invitation/git/approve` with
+`{ threadId, invitationId, token, files, identity, confirmed: true }`, or
+`.../decline` with `{ threadId, invitationId }`. An approval echoes a `token` that only an
+inspection returns, so Skinbuff sends the one it has and does not invent one.
+
+The launch cookie the app's own window carries is forwarded on both, which is what
+authorises the write. The consequences of that, stated plainly:
+
+- **A refusal is never dressed up as success.** If the orchestrator answers 401 or 403, you
+see that status and that message; no scripted reply is substituted for it. The same goes for
+an approval with no live invitation behind it — the decision is refused and the approval is
+left pending rather than quietly marked resolved.
+- **Nothing is applied optimistically.** A decision is only shown as made once the server —
+and therefore the app — has agreed.
+- **A partial reply stays partial.** If an agent errors mid-stream, the text that arrived is
+kept and the error is reported alongside it.
+
 ## Checks
 
 ```bash
@@ -83,11 +116,11 @@ npm run typecheck
 npm test
 ```
 
-68 tests cover the state engine, the fixtures, the orchestrator client, the HTTP server
-(static serving, the proxy's forwarding and streaming behaviour, the write guards) and the
-attach launcher's argument and discovery helpers. The proxy and stream behaviour is
-verified against a stand-in orchestrator that records exactly what it was sent, rather
-than against assumptions about it.
+88 tests cover the state engine, the fixtures, the orchestrator client (including the AI SDK
+stream parser and the chat body), the HTTP server (static serving, the proxy's forwarding and
+streaming behaviour, the write guards) and the attach launcher's argument and discovery
+helpers. The proxy, the stream and both live writes are verified against a stand-in
+orchestrator that records exactly what it was sent, rather than against assumptions about it.
 
 ## Layout
 
@@ -117,5 +150,12 @@ is" has one definition rather than two.
   (`FREEBUFF_DESKTOP_UI_ORIGIN` defaults to 5174), but it is undocumented and could change
   in any release. The demo mode exists so a change there degrades to a useful UI rather
   than a blank window.
-- **The skin writes nothing to the orchestrator.** Reads and the event stream only; the
-  chat and approval actions are journaled locally and answered by the demo.
+- **The two writes are pinned but were not observed against the real app.** Their routes and
+  bodies come from the shipped bundles, and they were exercised end to end through a browser
+  against a stand-in that speaks the same protocol — but a completed turn and a real
+  invitation decision against a running Freebuff still need the app relaunched with
+  `FREEBUFF_DEV_UI=1` in your own session. `trigger: "submit-message"` is the AI SDK's own
+  literal rather than an observation of an accepted turn, and the JSON each write route returns
+  is still unknown, so nothing here depends on it.
+- **Replies arrive when the turn finishes, not as they stream.** The assistant's text is
+  published to the skin's stream once, at the end of the turn, rather than delta by delta.
