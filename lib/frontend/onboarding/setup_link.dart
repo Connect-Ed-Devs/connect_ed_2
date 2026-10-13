@@ -789,7 +789,7 @@ class _LinkPageState extends State<LinkPage> with TickerProviderStateMixin {
     );
 
     try {
-      bool isValid = await checkLink(url);
+      final result = await checkLinkDetailed(url.trim());
 
       setState(() {
         _isValidating = false;
@@ -797,7 +797,7 @@ class _LinkPageState extends State<LinkPage> with TickerProviderStateMixin {
 
       Navigator.of(context).pop(); // Close loading dialog
 
-      if (isValid) {
+      if (result.ok) {
         // Show animated success feedback
         HapticFeedback.heavyImpact();
 
@@ -805,7 +805,7 @@ class _LinkPageState extends State<LinkPage> with TickerProviderStateMixin {
         await _showSuccessAnimation(context);
 
         // Save the link using global prefs with new key
-        await prefs.setString('link', makeHTTPS(url));
+        await prefs.setString('link', makeHTTPS(url.trim()));
         await prefs.setBool('setup_complete', true);
 
         // Navigate to main app
@@ -816,8 +816,8 @@ class _LinkPageState extends State<LinkPage> with TickerProviderStateMixin {
         HapticFeedback.heavyImpact();
         _showErrorDialog(
           context,
-          'Invalid Calendar Link',
-          'The link you entered doesn\'t appear to be a valid calendar link. Please check the URL and try again.',
+          'Calendar Link Rejected',
+          result.message,
         );
       }
     } catch (e) {

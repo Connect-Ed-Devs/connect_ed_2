@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Skinbuff</title>
+    <link rel="stylesheet" href="./app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand__mark" aria-hidden="true">sb</span>
+        <div>
+          <h1>Skinbuff</h1>
+          <p class="brand__tagline">A cto.new-style workspace for Freebuff</p>
+        </div>
+      </div>
+      <div class="topbar__meta">
+        <span class="badge" id="mode-badge" data-mode="demo">connecting&hellip;</span>
+        <span class="stat" id="stat-tasks">&mdash;</span>
+        <span class="stat" id="stat-agents">&mdash;</span>
+        <span class="stat" id="stat-approvals">&mdash;</span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <nav class="rail" aria-label="Workspace">
+        <div class="rail__block">
+          <h2 class="rail__title">Workspace</h2>
+          <dl class="facts" id="rail-facts"></dl>
+        </div>
+        <div class="rail__block">
+          <h2 class="rail__title">Pipeline</h2>
+          <ul class="legend" id="rail-legend"></ul>
+        </div>
+        <p class="rail__note">
+          This skin shows the work &mdash; the conversation, the board, the team and what needs your
+          decision. Terminals and the ad surface are deliberately not here.
+        </p>
+      </nav>
+
+      <section class="lead" aria-labelledby="lead-heading">
+        <h2 id="lead-heading" class="pane__title">Lead</h2>
+        <div class="chat" id="chat" role="log" aria-live="polite" data-empty="No messages yet."></div>
+        <form class="composer" id="composer">
+          <label class="composer__label" for="prompt">Message the Lead</label>
+          <textarea
+            id="prompt"
+            name="prompt"
+            rows="2"
+            placeholder="Describe the change you want&hellip;"
+            autocomplete="off"
+          ></textarea>
+          <div class="composer__actions">
+            <span class="composer__hint">Enter to send &middot; Shift+Enter for a new line</span>
+            <button type="submit" class="btn btn--primary" id="send">Send</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="side" aria-labelledby="work-heading">
+        <h2 id="work-heading" class="pane__title">Work</h2>
+        <div class="tabs" role="tablist" id="tabs" aria-label="Work surfaces">
+          <button
+            type="button"
+            role="tab"
+            id="tab-board"
+            aria-controls="panel-board"
+            aria-selected="true"
+            class="tab is-active"
+            data-panel="board"
+          >
+            Board <span class="tab__count" id="tab-count-board">0</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="tab-team"
+            aria-controls="panel-team"
+            aria-selected="false"
+            class="tab"
+            data-panel="team"
+          >
+            Team <span class="tab__count" id="tab-count-team">0</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="tab-approvals"
+            aria-controls="panel-approvals"
+            aria-selected="false"
+            class="tab"
+            data-panel="approvals"
+          >
+            Approvals <span class="tab__count" id="tab-count-approvals">0</span>
+          </button>
+        </div>
+
+        <div class="panel" id="panel-board" role="tabpanel" aria-labelledby="tab-board"></div>
+        <div class="panel" id="panel-team" role="tabpanel" aria-labelledby="tab-team" hidden></div>
+        <div class="panel" id="panel-approvals" role="tabpanel" aria-labelledby="tab-approvals" hidden></div>
+      </section>
+    </main>
+
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

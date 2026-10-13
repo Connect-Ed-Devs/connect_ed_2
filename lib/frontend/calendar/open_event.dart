@@ -1,3 +1,4 @@
+import 'package:connect_ed_2/classes/room_directory.dart';
 import 'package:connect_ed_2/classes/schedule_item.dart';
 import 'package:flutter/material.dart';
 
@@ -99,7 +100,7 @@ class _OpenCalendarEventState extends State<OpenCalendarEvent> {
                         _EventDetailRow(
                           icon: Icons.location_on_outlined,
                           label: 'Location',
-                          value: item.location!,
+                          value: roomDisplayName(item.location),
                         ),
                       ],
                       if (item.instructor != null &&

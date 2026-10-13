@@ -4,6 +4,7 @@ import 'package:connect_ed_2/classes/assessment.dart';
 import 'package:connect_ed_2/classes/calendar_item.dart';
 import 'package:connect_ed_2/classes/schedule_item.dart';
 import 'package:connect_ed_2/classes/menu_section.dart';
+import 'package:connect_ed_2/classes/room_directory.dart';
 import 'package:connect_ed_2/frontend/calendar/calendar_appbar.dart';
 import 'package:connect_ed_2/frontend/calendar/open_event.dart';
 import 'package:connect_ed_2/logger.dart';
@@ -520,6 +521,22 @@ class _CalendarPageState extends State<CalendarPage>
     // Calculate height based on duration, with a larger minimum height
     final double height = max(item.durationMinutes * (hourHeight / 60.0), 24.0);
 
+    // The room rides along in ScheduleItem.location - the feed supplies no
+    // LOCATION field, so the parser takes it from the summary's trailing
+    // parenthetical. roomDisplayName expands the school's shorthand into the
+    // campus building name where one is known, and hands back the code as-is
+    // otherwise.
+    //
+    // It sits on its own line under the title, so it is dropped on the short
+    // blocks (under 40px, i.e. a 30-minute class) where a second line of text
+    // would overflow the fixed height. It is also dropped when it only repeats
+    // the title, which is what happens for "Lunch - SS (Lunch )".
+    final room = roomDisplayName(item.location);
+    final showRoom =
+        room.isNotEmpty &&
+        room.toLowerCase() != item.title.trim().toLowerCase() &&
+        height >= 40;
+
     return Positioned(
       top: topPosition,
       left: 0.0, // Align with the start of divider lines
@@ -561,15 +578,34 @@ class _CalendarPageState extends State<CalendarPage>
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
-                        child: Text(
-                          item.title,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12,
-                            color: Theme.of(context).colorScheme.onPrimary,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.title,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.onPrimary,
+                              ),
+                              // One line only while the room shares the block,
+                              // so the pair always fits the fixed height.
+                              maxLines: showRoom ? 1 : 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (showRoom)
+                              Text(
+                                room,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Theme.of(context).colorScheme.onPrimary
+                                      .withValues(alpha: 0.85),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                       const SizedBox(width: 8),

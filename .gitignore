@@ -44,6 +44,15 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Xcode / Flutter build artifacts. 69 files under ios/build/ were committed by
+# accident; they are regenerated on every build and bloat the repo history.
+# NOTE: the already-tracked copies still need `git rm --cached -- ios/build`
+# to actually leave the repo -- adding them here only stops new ones.
+ios/build/
+**/XCBuildData/
+ios/Flutter/ephemeral/
+**/.generated/
+
 # Added by Claude Task Master
 # Logs
 logs
@@ -72,7 +81,10 @@ tasks/
 .cursor/
 
 # Firebase configuration (contains sensitive API keys)
+# `flutterfire configure` (see firebase.json) writes to lib/firebase_options.dart,
+# so that path MUST be ignored too or real API keys get committed.
 lib/firebase/firebase_options.dart
+lib/firebase_options.dart
 
 # Error logs with personal information
 error.txt

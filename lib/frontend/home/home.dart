@@ -12,6 +12,7 @@ import 'package:connect_ed_2/requests/cache_manager.dart';
 import 'package:connect_ed_2/requests/calendar_requests.dart';
 import 'package:connect_ed_2/requests/games_cache_manager.dart';
 import 'package:connect_ed_2/requests/menu_cache_manager.dart';
+import 'package:connect_ed_2/requests/widget_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -79,6 +80,9 @@ class _HomePageState extends State<HomePage>
         _calendarData = freshData;
         _nextScheduleItem = _getNextScheduleItem(freshData);
       });
+      // Republish now the cache is fresh, so the widgets are correct after the
+      // very first run rather than a launch later. No-ops on web/desktop.
+      WidgetBridge.publishFromCache();
     } catch (error) {
       // Silently fail - keep showing cached data
       print('Could not fetch fresh data (using cached): $error');
@@ -644,6 +648,15 @@ class _HomePageState extends State<HomePage>
                                                 Text(
                                                   _nextScheduleItem?.title ??
                                                       'No upcoming classes',
+                                                  // Real campus names are long
+                                                  // ("AP English Language &\nComposition"). Unbounded, they
+                                                  // wrap to a second line that
+                                                  // runs past the bottom of the
+                                                  // fixed-height header and
+                                                  // trips a RenderFlex overflow.
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                   style: TextStyle(
                                                     fontSize: 24,
                                                     fontWeight: FontWeight.w600,
@@ -713,11 +726,20 @@ class _HomePageState extends State<HomePage>
                         child: AnimatedOpacity(
                           opacity: collapsedTitleOpacity,
                           duration: const Duration(milliseconds: 100),
+                          // NOTE: this used to be a `Flexible` inside a
+                          // `Center`. `Flexible` only makes sense directly
+                          // inside a Flex, so it threw a ParentDataWidget
+                          // assertion on every frame. `Positioned` already
+                          // bounds the width, so plain padding is enough for
+                          // the ellipsis to kick in.
                           child: Center(
-                            child: Flexible(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
                               child: Text(
                                 "Up Next: ${_nextScheduleItem?.title ?? 'No upcoming classes'}",
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
                                   color: Colors.white,

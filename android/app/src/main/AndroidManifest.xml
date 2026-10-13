@@ -25,6 +25,21 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Home-screen and (Android 14+) lock-screen widget. It reads the
+             payload published by lib/requests/widget_bridge.dart; the key
+             contract is documented at the top of ConnectEdWidgetProvider.kt.
+             exported="true" is required because the launcher sends the
+             APPWIDGET_UPDATE broadcast from outside the app. -->
+        <receiver
+            android:name="com.example.connect_ed_2.ConnectEdWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/connect_ed_widget_info" />
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

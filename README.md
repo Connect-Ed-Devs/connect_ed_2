@@ -118,44 +118,36 @@ In your Firebase project, enable:
 
 ### Step 4: Configure Firebase Options
 
-1. **Copy the template file**:
-   ```bash
-   cp lib/firebase/firebase_options.dart.template lib/firebase/firebase_options.dart
-   ```
+`firebase_options.dart` is **generated, never committed** — it contains your API keys.
 
-2. **Fill in your Firebase configuration**:
-   Open `lib/firebase/firebase_options.dart` and replace all placeholder values:
-
-   ```dart
-   static const FirebaseOptions web = FirebaseOptions(
-     apiKey: 'your-web-api-key-here',
-     appId: 'your-web-app-id-here',
-     messagingSenderId: 'your-sender-id-here',
-     projectId: 'your-project-id-here',
-     authDomain: 'your-project-id.firebaseapp.com',
-     storageBucket: 'your-project-id.firebasestorage.app',
-     measurementId: 'your-measurement-id-here',
-   );
-   ```
-
-   **Where to find these values**:
-   - Go to Firebase Console → Project Settings → General tab
-   - Scroll down to "Your apps" section
-   - Click on each app (Web, Android, iOS) to see the configuration
-
-### Step 5: FlutterFire CLI (Alternative Method)
-
-You can also use the FlutterFire CLI to automatically configure Firebase:
+This repo already ships a `firebase.json` that pins the project and platforms, so just let
+the FlutterFire CLI generate everything:
 
 ```bash
-# Install FlutterFire CLI
+# Install FlutterFire CLI (one time)
 dart pub global activate flutterfire_cli
 
-# Configure Firebase for your project
+# Generate lib/firebase_options.dart + the platform config files
 flutterfire configure
 ```
 
-This will automatically generate the `firebase_options.dart` file with your configuration.
+This writes:
+- `lib/firebase_options.dart` — imported by `lib/main.dart`
+- `android/app/google-services.json`
+- `ios/Runner/GoogleService-Info.plist`
+
+> ⚠️ **Never commit `lib/firebase_options.dart`.** It is listed in `.gitignore`. If it shows
+> up in `git status` after generating, stop and fix your `.gitignore` first.
+>
+> Firebase *client* keys are not secret in the usual sense — they ship inside the app
+> anyway, and your real protection is Firestore Security Rules plus App Check. But
+> committing the file still exposes your project ID and undoes the deliberate cleanup in
+> `93cbdf8` ("Security: Remove Firebase API keys").
+
+**Note on paths:** `flutterfire configure` writes to `lib/firebase_options.dart`, which is
+what `lib/main.dart` imports. Older revisions of this project used
+`lib/firebase/firebase_options.dart` — if you're working from an older branch, either move
+the generated file or update the import to match.
 
 ## 🏫 School Configuration
 

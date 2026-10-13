@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget metadata. `widgetCategory="home_screen|keyguard"` opts in to the
+  Android 14+ lock screen; `targetCellWidth`/`targetCellHeight` size it for the
+  2x2 grid on API 31+, with minWidth/minHeight as the fallback for older
+  launchers.
+
+  updatePeriodMillis is the 30-minute minimum: the widget refreshes itself
+  against whatever the app last published. Scheduling real background fetches is
+  a separate job and is not done here.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/connect_ed_widget"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen|keyguard" />

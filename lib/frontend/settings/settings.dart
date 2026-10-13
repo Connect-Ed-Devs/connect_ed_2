@@ -1,11 +1,29 @@
 import 'package:connect_ed_2/main.dart';
+import 'package:connect_ed_2/requests/calendar_requests.dart';
+import 'package:connect_ed_2/requests/url_check.dart' as link_check;
 import 'package:flutter/material.dart';
 import 'package:flutter_sticky_header/flutter_sticky_header.dart';
 import 'feedback_form.dart';
 import 'bug_report_form.dart';
 
+/// Checks whether a candidate calendar URL is a usable feed.
+///
+/// Defaults to the real iCalendar validation in `requests/url_check.dart`,
+/// which reports *why* a link was rejected (bad URL, HTTP error, CORS block,
+/// not a feed) instead of a single opaque failure.
+/// It is injectable so the save path can be exercised in tests without
+/// standing up a network feed.
+typedef CalendarLinkChecker =
+    Future<link_check.LinkCheckResult> Function(String url);
+
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({
+    super.key,
+    this.linkChecker = link_check.checkLinkDetailed,
+  });
+
+  /// Validates the entered URL before it is persisted.
+  final CalendarLinkChecker linkChecker;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -28,15 +46,8 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
-  Future<bool> checkLink(String link) async {
-    // Placeholder for link checking logic
-    // Replace with actual implementation from url_check.dart
-    await Future.delayed(const Duration(seconds: 1)); // Simulate network call
-    return link.contains('calendar.ics');
-  }
-
   Future<void> _saveCalendarLink() async {
-    final newLink = _calendarLinkController.text;
+    final newLink = _calendarLinkController.text.trim();
     if (newLink.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Calendar link cannot be empty.')),
@@ -77,13 +88,23 @@ class _SettingsPageState extends State<SettingsPage> {
     );
 
     try {
-      bool isValid = await checkLink(newLink);
+      // Real validation: fetch the URL and try to parse it as an iCalendar
+      // feed (see lib/requests/url_check.dart).
+      final result = await widget.linkChecker(newLink);
       if (mounted) {
         Navigator.of(context).pop();
       }
 
-      if (isValid) {
-        await prefs.setString('calendar_link', newLink);
+      if (result.ok) {
+        // Store under the key the calendar fetcher actually reads
+        // (CalendarManager.fetchData -> prefs.getString('link')), normalising
+        // webcal:// the same way the onboarding flow does. Writing
+        // 'calendar_link' here used to be a silent no-op.
+        await prefs.setString('link', link_check.makeHTTPS(newLink));
+        // The fetcher serves its cache whenever it is still fresh (up to two
+        // days for the calendar), so without this the newly saved link would
+        // appear to do nothing at all.
+        calendarManager.clearCache();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -95,11 +116,7 @@ class _SettingsPageState extends State<SettingsPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Invalid calendar link. Please check the URL and try again.',
-              ),
-            ),
+            SnackBar(content: Text(result.message)),
           );
         }
       }

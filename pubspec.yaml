@@ -51,6 +51,10 @@ dependencies:
   webview_flutter: ^4.13.0
   cached_network_image: ^3.4.1
   logger: ^2.5.0
+  # Pinned, not caret-ranged: 0.9.3+ requires Flutter >= 3.38.1, which would
+  # raise this project's SDK floor for every contributor. 0.9.2+1 exposes the
+  # same API we use and runs on the Flutter 3.32 baseline in pubspec.lock.
+  home_widget: 0.9.2+1
 
 dev_dependencies:
   flutter_test:
@@ -75,7 +79,6 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/wooly_test.png
     - assets/ConnectEd Transparent.png
     - assets/step1.png
     - assets/step2.png
@@ -88,7 +91,6 @@ flutter:
     - assets/BH Logo.png
     - assets/BSS Logo.png
     - assets/CDS Logo.png
-    - assets/ConnectEd Transparent.png
     - assets/CPC Logo.png
     - assets/CS Logo.png
     - assets/DLS Logo.png
@@ -110,10 +112,6 @@ flutter:
     - assets/SJK Logo.png
     - assets/SMC Logo.png
     - assets/SMLS Logo.png
-    - assets/step1.png
-    - assets/step2.png
-    - assets/step3.png
-    - assets/step4.png
     - assets/TCS Logo.png
     - assets/TFS Logo.png
     - assets/TMS Logo.png
