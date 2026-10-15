@@ -1,7 +1,9 @@
 import 'package:connect_ed_2/classes/assessment.dart';
 import 'package:connect_ed_2/classes/calendar_item.dart';
 import 'package:connect_ed_2/classes/personal_task.dart';
+import 'package:connect_ed_2/classes/week_workload.dart';
 import 'package:connect_ed_2/frontend/assignments/personal_task_sheet.dart';
+import 'package:connect_ed_2/frontend/assignments/week_strip.dart';
 import 'package:connect_ed_2/main.dart';
 import 'package:connect_ed_2/requests/cache_manager.dart';
 import 'package:connect_ed_2/requests/calendar_requests.dart';
@@ -81,6 +83,10 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
 
   /// Midnight on the first of the month being shown. Opens on the current one.
   late DateTime _selectedMonth;
+
+  /// The day picked in the week strip. While set, the list shows only that
+  /// day's work, whichever month it is in.
+  DateTime? _selectedDay;
 
   /// Midnight today, captured once so every row on a build agrees on "today".
   late final DateTime _today;
@@ -228,6 +234,12 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
 
   /// The entries that fall inside the month currently being shown.
   List<_Entry> get _monthEntries {
+    final day = _selectedDay;
+    if (day != null) {
+      return _allEntries
+          .where((entry) => entry.date != null && _sameDay(entry.date!, day))
+          .toList();
+    }
     final month = _selectedMonth;
     return _allEntries
         .where(
@@ -238,6 +250,9 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
         )
         .toList();
   }
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   /// Months offered by the picker: every month the feed has work for, plus the
   /// current one so opening on "now" is always possible.
@@ -330,6 +345,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
         child: CustomScrollView(
           slivers: [
             _buildAppBar(),
+            if (!_isLoading && _allEntries.isNotEmpty) _buildWeekStrip(),
             if (_isLoading)
               const SliverFillRemaining(
                 hasScrollBody: false,
@@ -350,6 +366,29 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
             const SliverToBoxAdapter(child: SizedBox(height: 120)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildWeekStrip() {
+    return SliverToBoxAdapter(
+      child: WeekStrip(
+        week: weekWorkload(
+          calendar: _calendarData,
+          tasks: _tasks,
+          completed: _completed,
+          today: _today,
+        ),
+        today: _today,
+        selected: _selectedDay,
+        onSelect:
+            (day) => setState(
+              () =>
+                  _selectedDay =
+                      _selectedDay != null && _sameDay(_selectedDay!, day)
+                          ? null
+                          : day,
+            ),
       ),
     );
   }

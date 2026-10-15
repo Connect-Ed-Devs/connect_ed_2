@@ -188,7 +188,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Next month'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('15'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(DatePickerDialog),
+        matching: find.text('15'),
+      ),
+    );
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Save'));
