@@ -11,15 +11,17 @@ Public API for later tasks (reminders, week strip), in
 `lib/classes/personal_task.dart`:
 
 - `const personalTasksKey = 'personal_tasks'`
-- `class PersonalTask` with `toJson` / `fromJson` / `copyWith` and
-  `completionId` (`task|<id>`)
-- `List<PersonalTask> loadPersonalTasks()` reads the saved list; unreadable
-  data is logged and returns an empty list
+- `const completedKey = 'assignments_completed'`, the shared completed-id list
+- `class PersonalTask` with `toJson` / `fromJson` and `completionId`
+  (`task|<id>`)
+- `bool isPersonalTaskDone(PersonalTask)` reads that list
+- `List<PersonalTask> loadPersonalTasks()` reads the saved list; a malformed
+  item is logged and skipped, an unreadable list reads as empty
 - `Future<void> savePersonalTasks(List<PersonalTask>)`
 
 Completion reuses the existing `assignments_completed` string list. A task's
 entry is `task|<id>`, which cannot collide with a feed id (`class|title|day`).
-Readers that need "is it done" read that list for `task.completionId`.
+Use `isPersonalTaskDone` rather than reading the list directly.
 
 In the tab, a task is a row built by the same `_buildRow` as a feed item, bucketed
 by the same day rules, and told apart only by the secondary line "Personal
@@ -35,9 +37,10 @@ because `assignments.dart` was already over the size limit in ANTISLOP 1.7.
   says to avoid. Revisit if students do not find it.
 - Day counts now compare calendar days. A task due 15:30 yesterday must read
   "1 day ago", but `DateTime.difference(midnight).inDays` truncates that to 0.
-- When the feed fails to load but the student has tasks, the tasks show and the
-  error state is skipped. The failure is therefore not shown on that screen;
-  Settings still shows a failing school link.
+- When the feed fails but the student has tasks, the tasks show under a one-line
+  error: "Could not load the school calendar. Pull down to try again."
+- Saving a dated task switches the month picker to the task's month so it does
+  not vanish.
 - Task ids are `DateTime.now().microsecondsSinceEpoch`; two tasks cannot be
   created in the same microsecond from one sheet.
 - Rejected: a separate Tasks tab (the brief asks for the Assignments tab), a

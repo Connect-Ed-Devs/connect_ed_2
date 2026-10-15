@@ -145,14 +145,24 @@ void main() {
     expect(saved.single.title, 'Bring signed trip form');
   });
 
-  testWidgets('deleting a task removes it and its completed mark', (
+  testWidgets('deleting a task removes its completed mark and no other', (
     tester,
   ) async {
     await _pumpTab(tester);
     await _addTask(tester, 'Bring trip form', pickDate: true);
     final id = loadPersonalTasks().single.id;
-    await prefs.setStringList('assignments_completed', ['task|$id']);
 
+    await tester.tap(find.text('Bring trip form'));
+    await _settle(tester);
+    await tester.tap(find.text('Essay draft'));
+    await _settle(tester);
+    expect(
+      prefs.getStringList('assignments_completed'),
+      containsAll(['task|$id', 'English|Essay draft|2026-03-20']),
+    );
+
+    await tester.tap(find.text('Completed'));
+    await _settle(tester);
     await tester.longPress(find.text('Bring trip form'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete task'));
@@ -160,7 +170,57 @@ void main() {
 
     expect(find.text('Bring trip form'), findsNothing);
     expect(loadPersonalTasks(), isEmpty);
-    expect(prefs.getStringList('assignments_completed'), isEmpty);
+    expect(prefs.getStringList('assignments_completed'), [
+      'English|Essay draft|2026-03-20',
+    ]);
+  });
+
+  testWidgets('a task dated in another month switches the tab to that month', (
+    tester,
+  ) async {
+    await _pumpTab(tester);
+
+    await tester.tap(find.byTooltip('Add task'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Book fair');
+    await tester.pump();
+    await tester.tap(find.text('Set due date'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Next month'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('15'));
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(loadPersonalTasks().single.due, DateTime(2026, 4, 15));
+    expect(find.text('Book fair'), findsOneWidget);
+    expect(find.text('Apr 2026'), findsOneWidget);
+  });
+
+  testWidgets('shows tasks and a plain error line when the feed fails', (
+    tester,
+  ) async {
+    prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    calendarManager.lastRecorded = null;
+    await savePersonalTasks([
+      PersonalTask(
+        id: '1',
+        title: 'Study for quiz',
+        due: DateTime(2026, 3, 13),
+      ),
+    ]);
+
+    await _pumpTab(tester);
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Study for quiz'), findsOneWidget);
+    expect(
+      find.text('Could not load the school calendar. Pull down to try again.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('feed assignments cannot be edited by long press', (

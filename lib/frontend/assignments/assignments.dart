@@ -93,8 +93,6 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
   /// Midnight today, captured once so every row on a build agrees on "today".
   late final DateTime _today;
 
-  static const _completedKey = 'assignments_completed';
-
   /// The month [date] falls in, as a value that can be compared and used as a
   /// dropdown key. Day and time are dropped so every day of a month maps to the
   /// same value.
@@ -116,12 +114,12 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
   // ---------------------------------------------------------------------------
 
   Set<String> _loadCompleted() {
-    final stored = prefs.getStringList(_completedKey);
+    final stored = prefs.getStringList(completedKey);
     return stored == null ? <String>{} : stored.toSet();
   }
 
   Future<void> _persistCompleted() async {
-    await prefs.setStringList(_completedKey, _completed.toList());
+    await prefs.setStringList(completedKey, _completed.toList());
   }
 
   void _toggleCompleted(String id) {
@@ -143,7 +141,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
       existing: existing,
       now: widget.now,
     );
-    if (edit == null) return;
+    if (edit == null || !mounted) return;
 
     setState(() {
       if (edit.delete) {
@@ -157,6 +155,8 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
         } else {
           _tasks[index] = saved;
         }
+        final due = saved.due;
+        if (due != null) _selectedMonth = _monthOf(due);
       }
     });
     await savePersonalTasks(_tasks);
@@ -347,10 +347,13 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
               _buildErrorState()
             else if (_allEntries.isEmpty)
               _buildEmptyState()
-            else if (_monthEntries.isEmpty)
-              _buildEmptyMonthState()
-            else
-              ..._buildSections(),
+            else ...[
+              if (_errorMessage != null) _buildFeedErrorRow(),
+              if (_monthEntries.isEmpty)
+                _buildEmptyMonthState()
+              else
+                ..._buildSections(),
+            ],
             // Clearance so the floating nav bar never covers the last card.
             const SliverToBoxAdapter(child: SizedBox(height: 120)),
           ],
@@ -390,29 +393,28 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
           icon: Icon(Icons.add, color: theme.colorScheme.primary),
         ),
       ],
-      bottom: _allEntries.isEmpty
-          ? null
-          : PreferredSize(
-              preferredSize: const Size.fromHeight(28),
-              child: Padding(
-                padding: const EdgeInsets.only(left: 20, bottom: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    outstanding == 0
-                        ? 'All caught up'
-                        : '$outstanding to do',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: theme.colorScheme.onSurface.withValues(
-                        alpha: 0.6,
+      bottom:
+          _allEntries.isEmpty
+              ? null
+              : PreferredSize(
+                preferredSize: const Size.fromHeight(28),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 20, bottom: 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      outstanding == 0 ? 'All caught up' : '$outstanding to do',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
     );
   }
 
@@ -437,19 +439,20 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
             ),
             // The trigger stays in the brand blue; the menu itself reads in
             // normal body colour so the options stay legible.
-            selectedItemBuilder: (context) => [
-              for (final month in months)
-                Center(
-                  child: Text(
-                    _monthLabel(month),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.primary,
+            selectedItemBuilder:
+                (context) => [
+                  for (final month in months)
+                    Center(
+                      child: Text(
+                        _monthLabel(month),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-            ],
+                ],
             style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w500,
@@ -604,14 +607,16 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
         itemCount: items.length,
         // A hairline indented to the text column, as on the Calendar tab's
         // assessment list - not a box per row.
-        separatorBuilder: (context, index) => Divider(
-          height: 1,
-          thickness: 1,
-          indent: 35, // checkbox (22) + its gap (13)
-          color: theme.colorScheme.tertiary,
-        ),
-        itemBuilder: (context, index) =>
-            _buildRow(items[index], isDone: done || _isDone(items[index])),
+        separatorBuilder:
+            (context, index) => Divider(
+              height: 1,
+              thickness: 1,
+              indent: 35, // checkbox (22) + its gap (13)
+              color: theme.colorScheme.tertiary,
+            ),
+        itemBuilder:
+            (context, index) =>
+                _buildRow(items[index], isDone: done || _isDone(items[index])),
       ),
     );
   }
@@ -646,20 +651,22 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isDone
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withValues(alpha: 0.35),
+                  color:
+                      isDone
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.35),
                   width: 1.6,
                 ),
                 color: isDone ? theme.colorScheme.primary : Colors.transparent,
               ),
-              child: isDone
-                  ? Icon(
-                      Icons.check,
-                      size: 14,
-                      color: theme.colorScheme.onPrimary,
-                    )
-                  : null,
+              child:
+                  isDone
+                      ? Icon(
+                        Icons.check,
+                        size: 14,
+                        color: theme.colorScheme.onPrimary,
+                      )
+                      : null,
             ),
             const SizedBox(width: 13),
             Expanded(
@@ -676,9 +683,12 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       decoration: isDone ? TextDecoration.lineThrough : null,
-                      color: isDone
-                          ? theme.colorScheme.onSurface.withValues(alpha: 0.45)
-                          : theme.colorScheme.onSurface,
+                      color:
+                          isDone
+                              ? theme.colorScheme.onSurface.withValues(
+                                alpha: 0.45,
+                              )
+                              : theme.colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -691,7 +701,9 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12.5,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.55,
+                      ),
                     ),
                   ),
                 ],
@@ -705,11 +717,14 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w500,
-                color: isDone
-                    ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
-                    : (days <= 0
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.55)),
+                color:
+                    isDone
+                        ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
+                        : (days <= 0
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.onSurface.withValues(
+                              alpha: 0.55,
+                            )),
               ),
             ),
           ],
@@ -743,7 +758,8 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
         theme,
         icon: Icons.event_available_outlined,
         title: 'Nothing due in ${_monthLabelLong(_selectedMonth)}',
-        body: 'Pick another month from the list above, or pull down to refresh.',
+        body:
+            'Pick another month from the list above, or pull down to refresh.',
       ),
     );
   }
@@ -786,6 +802,21 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Shown above the student's own tasks when the school feed failed, so the
+  /// tasks stay usable without hiding that the feed is missing.
+  Widget _buildFeedErrorRow() {
+    final theme = Theme.of(context);
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        child: Text(
+          'Could not load the school calendar. Pull down to try again.',
+          style: TextStyle(fontSize: 12.5, color: theme.colorScheme.error),
         ),
       ),
     );

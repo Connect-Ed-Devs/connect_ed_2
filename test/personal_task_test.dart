@@ -73,5 +73,27 @@ void main() {
 
       expect(loadPersonalTasks(), isEmpty);
     });
+
+    test('one malformed item is skipped and the rest are kept', () async {
+      await prefs.setString(
+        personalTasksKey,
+        '[{"id":"1","title":"Good","due":null,"hasTime":false},'
+        '{"id":"2","due":"not a date"},'
+        '{"id":"3","title":"Also good","due":null,"hasTime":false}]',
+      );
+
+      expect(loadPersonalTasks().map((t) => t.title), ['Good', 'Also good']);
+    });
+  });
+
+  group('completion', () {
+    test('isPersonalTaskDone reads the shared completed list', () async {
+      final task = PersonalTask(id: '9', title: 'Tidy locker');
+      expect(isPersonalTaskDone(task), isFalse);
+
+      await prefs.setStringList(completedKey, [task.completionId]);
+
+      expect(isPersonalTaskDone(task), isTrue);
+    });
   });
 }

@@ -6,6 +6,10 @@ import 'package:connect_ed_2/main.dart';
 /// SharedPreferences key holding every personal task as one JSON list.
 const personalTasksKey = 'personal_tasks';
 
+/// SharedPreferences key of the string list of completed ids shared by feed
+/// assignments and personal tasks.
+const completedKey = 'assignments_completed';
+
 /// A task the student added themselves, as opposed to one from a school feed.
 ///
 /// [due] is null for a task with no date. When [hasTime] is false only the
@@ -31,20 +35,6 @@ class PersonalTask {
   /// assignment's `class|title|day` id.
   String get completionId => 'task|$id';
 
-  PersonalTask copyWith({
-    String? title,
-    DateTime? due,
-    bool? hasTime,
-    bool clearDue = false,
-  }) {
-    return PersonalTask(
-      id: id,
-      title: title ?? this.title,
-      due: clearDue ? null : (due ?? this.due),
-      hasTime: clearDue ? false : (hasTime ?? this.hasTime),
-    );
-  }
-
   Map<String, dynamic> toJson() => {
     'id': id,
     'title': title,
@@ -65,22 +55,34 @@ class PersonalTask {
 
 /// Every saved personal task, in the order they were saved.
 ///
-/// An unreadable value is logged and treated as no tasks, so one bad write
-/// cannot stop the Assignments tab from opening.
+/// Items are decoded one at a time: a malformed item is logged and skipped so
+/// the rest survive, and an unreadable list is logged and read as empty.
 List<PersonalTask> loadPersonalTasks() {
   final raw = prefs.getString(personalTasksKey);
   if (raw == null) return [];
+  final List<dynamic> list;
   try {
-    final list = jsonDecode(raw) as List<dynamic>;
-    return [
-      for (final item in list)
-        PersonalTask.fromJson(item as Map<String, dynamic>),
-    ];
+    list = jsonDecode(raw) as List<dynamic>;
   } catch (error) {
     logger.e('Could not read saved personal tasks: $error');
     return [];
   }
+  final tasks = <PersonalTask>[];
+  for (final item in list) {
+    try {
+      tasks.add(PersonalTask.fromJson(item as Map<String, dynamic>));
+    } catch (error) {
+      logger.e('Skipped an unreadable personal task: $error');
+    }
+  }
+  return tasks;
 }
+
+/// Whether [task] is ticked off in the Assignments tab.
+bool isPersonalTaskDone(PersonalTask task) =>
+    (prefs.getStringList(completedKey) ?? const <String>[]).contains(
+      task.completionId,
+    );
 
 Future<void> savePersonalTasks(List<PersonalTask> tasks) async {
   await prefs.setString(
