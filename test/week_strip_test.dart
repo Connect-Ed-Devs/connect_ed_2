@@ -37,6 +37,16 @@ void main() {
         schedule: const [],
         assessments: [_a('Quiz', 12)],
       ),
+      DateTime(2026, 4, 20): CalendarItem(
+        schedule: const [],
+        assessments: [
+          Assessment(
+            title: 'April report',
+            className: 'Math',
+            date: DateTime(2026, 4, 20),
+          ),
+        ],
+      ),
       DateTime(2026, 3, 14): CalendarItem(
         schedule: const [],
         assessments: [_a('Essay', 14), _a('Lab', 14), _a('Done thing', 14)],
@@ -87,5 +97,70 @@ void main() {
     await tester.tap(find.bySemanticsLabel(RegExp('Saturday 14 March')));
     await tester.pump();
     expect(find.text('Quiz'), findsOneWidget);
+  });
+
+  testWidgets('uses two-letter weekday labels', (tester) async {
+    await _pump(tester);
+    final strip = find.byKey(const ValueKey('week-strip'));
+    for (final label in ['Th', 'Fr', 'Sa', 'Su', 'Mo', 'Tu', 'We']) {
+      expect(
+        find.descendant(of: strip, matching: find.text(label)),
+        findsOneWidget,
+      );
+    }
+  });
+
+  testWidgets('the busiest count is primary and bold, today is bold', (
+    tester,
+  ) async {
+    await _pump(tester);
+    final strip = find.byKey(const ValueKey('week-strip'));
+    Text textIn(String value) => tester.widget<Text>(
+      find.descendant(of: strip, matching: find.text(value)),
+    );
+    final primary = Theme.of(tester.element(strip)).colorScheme.primary;
+
+    expect(textIn('3').style!.color, primary);
+    expect(textIn('3').style!.fontWeight, FontWeight.w700);
+    expect(textIn('1').style!.color, isNot(primary));
+
+    expect(textIn('12').style!.fontWeight, FontWeight.w700);
+    expect(textIn('13').style!.fontWeight, FontWeight.w400);
+  });
+
+  testWidgets('a selected day stays tappable after its items are done', (
+    tester,
+  ) async {
+    await _pump(tester);
+    final saturday = find.bySemanticsLabel(RegExp('Saturday 14 March'));
+    await tester.tap(saturday);
+    await tester.pump();
+
+    for (final title in ['Essay', 'Lab', 'Pack bag']) {
+      await tester.tap(find.text(title));
+      await tester.pump();
+    }
+    final strip = find.byKey(const ValueKey('week-strip'));
+    expect(find.descendant(of: strip, matching: find.text('3')), findsNothing);
+    expect(find.text('Quiz'), findsNothing);
+
+    await tester.tap(find.bySemanticsLabel(RegExp('Saturday 14 March')));
+    await tester.pump();
+    expect(find.text('Quiz'), findsOneWidget);
+  });
+
+  testWidgets('changing month clears the day filter', (tester) async {
+    await _pump(tester);
+    await tester.tap(find.bySemanticsLabel(RegExp('Saturday 14 March')));
+    await tester.pump();
+    expect(find.text('April report'), findsNothing);
+
+    await tester.tap(find.byType(DropdownButton<DateTime>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apr 2026').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('April report'), findsOneWidget);
+    expect(find.text('Essay'), findsNothing);
   });
 }

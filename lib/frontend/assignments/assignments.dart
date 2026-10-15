@@ -498,7 +498,10 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
             ],
             onChanged: (month) {
               if (month == null) return;
-              setState(() => _selectedMonth = month);
+              setState(() {
+                _selectedMonth = month;
+                _selectedDay = null;
+              });
             },
           ),
         ),

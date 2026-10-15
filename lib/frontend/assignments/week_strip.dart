@@ -5,7 +5,8 @@ import 'package:intl/intl.dart';
 /// One row of the next seven days: weekday letter, date and how much is due.
 ///
 /// The busiest day's count is in `primary`; days with nothing due show a muted
-/// dash and cannot be tapped. Today is marked by heavier text, the selected day
+/// dash and cannot be tapped unless they are the selected day, which must
+/// stay tappable so the filter can be cleared. Today is marked by heavier text, the selected day
 /// by an underlined date.
 class WeekStrip extends StatelessWidget {
   const WeekStrip({
@@ -56,16 +57,16 @@ class WeekStrip extends StatelessWidget {
       label:
           '${DateFormat('EEEE d MMMM').format(day)}, '
           '${empty ? 'nothing due' : '${load.count} due'}',
-      button: !empty,
+      button: !empty || isSelected,
       excludeSemantics: true,
       child: InkWell(
-        onTap: empty ? null : () => onSelect(day),
+        onTap: empty && !isSelected ? null : () => onSelect(day),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             children: [
               Text(
-                DateFormat('EEEEE').format(day),
+                DateFormat('E').format(day).substring(0, 2),
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: weight,
@@ -92,7 +93,7 @@ class WeekStrip extends StatelessWidget {
                       heaviest
                           ? theme.colorScheme.primary
                           : theme.colorScheme.onSurface.withValues(
-                            alpha: empty ? 0.38 : 1,
+                            alpha: empty ? 0.55 : 1,
                           ),
                 ),
               ),
