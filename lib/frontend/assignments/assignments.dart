@@ -1,5 +1,7 @@
 import 'package:connect_ed_2/classes/assessment.dart';
 import 'package:connect_ed_2/classes/calendar_item.dart';
+import 'package:connect_ed_2/classes/personal_task.dart';
+import 'package:connect_ed_2/frontend/assignments/personal_task_sheet.dart';
 import 'package:connect_ed_2/main.dart';
 import 'package:connect_ed_2/requests/cache_manager.dart';
 import 'package:connect_ed_2/requests/calendar_requests.dart';
@@ -29,26 +31,48 @@ class AssignmentsPage extends StatefulWidget {
 }
 
 /// Which urgency group an assignment falls into.
-enum _Bucket { overdue, today, tomorrow, thisWeek, later, done }
+enum _Bucket { overdue, today, tomorrow, thisWeek, later, undated, done }
 
-/// An assessment paired with the cache key it was found under.
+/// One row: either a feed assessment or a task the student added.
 class _Entry {
-  final Assessment assessment;
-  final DateTime date;
+  final Assessment? assessment;
+  final PersonalTask? task;
 
-  const _Entry({required this.assessment, required this.date});
+  /// Due day, or null for a personal task with no date.
+  final DateTime? date;
+
+  const _Entry.assessment(Assessment this.assessment, DateTime this.date)
+    : task = null;
+
+  _Entry.task(PersonalTask this.task) : assessment = null, date = task.due;
+
+  String get title => assessment?.title ?? task!.title;
+
+  /// The line under the title. A personal task is told apart from a feed
+  /// item only by this text.
+  String get subtitle {
+    if (task != null) return 'Personal task';
+    final className = assessment!.className;
+    return className.isEmpty ? 'Unclassified' : className;
+  }
 
   /// Stable identity used to persist the completed state.
   ///
   /// Keyed on class + title + day (not time) so it survives re-fetches and
   /// stays stable when the same assignment appears on the same day.
   String get id {
-    final day = DateFormat('yyyy-MM-dd').format(date);
-    return '${assessment.className}|${assessment.title}|$day';
+    final task = this.task;
+    if (task != null) return task.completionId;
+    final day = DateFormat('yyyy-MM-dd').format(date!);
+    return '${assessment!.className}|${assessment!.title}|$day';
   }
 
   /// Whole days from [today] until this is due. Negative once it is late.
-  int daysUntilDue(DateTime today) => date.difference(today).inDays;
+  /// Compared by calendar day so a task due at 15:30 yesterday is 1 day late.
+  int daysUntilDue(DateTime today) {
+    final due = date!;
+    return DateTime(due.year, due.month, due.day).difference(today).inDays;
+  }
 }
 
 class _AssignmentsPageState extends State<AssignmentsPage> {
@@ -60,6 +84,8 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
   bool _completedExpanded = false;
 
   Set<String> _completed = <String>{};
+
+  List<PersonalTask> _tasks = [];
 
   /// Midnight on the first of the month being shown. Opens on the current one.
   late DateTime _selectedMonth;
@@ -81,6 +107,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
     _today = DateTime(now.year, now.month, now.day);
     _selectedMonth = _monthOf(_today);
     _completed = _loadCompleted();
+    _tasks = loadPersonalTasks();
     _loadCalendarData();
   }
 
@@ -109,6 +136,32 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
   }
 
   bool _isDone(_Entry entry) => _completed.contains(entry.id);
+
+  Future<void> _openTaskSheet({PersonalTask? existing}) async {
+    final edit = await showPersonalTaskSheet(
+      context,
+      existing: existing,
+      now: widget.now,
+    );
+    if (edit == null) return;
+
+    setState(() {
+      if (edit.delete) {
+        _tasks.removeWhere((task) => task.id == existing!.id);
+        _completed.remove(existing!.completionId);
+      } else {
+        final saved = edit.task!;
+        final index = _tasks.indexWhere((task) => task.id == saved.id);
+        if (index == -1) {
+          _tasks.add(saved);
+        } else {
+          _tasks[index] = saved;
+        }
+      }
+    });
+    await savePersonalTasks(_tasks);
+    if (edit.delete) await _persistCompleted();
+  }
 
   /// Loads assignments, preferring fresh cache over the network.
   ///
@@ -154,7 +207,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
   /// Every assessment in the feed, flattened and sorted by due date.
   List<_Entry> get _allEntries {
     final data = _calendarData;
-    if (data == null) return const [];
+    if (data == null) return [for (final task in _tasks) _Entry.task(task)];
 
     // A feed can carry the same assignment more than once (duplicate VEVENTs
     // in the ICS, or an overlap between cached and freshly fetched data).
@@ -163,12 +216,21 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
     final seen = <String>{};
     data.forEach((date, item) {
       for (final assessment in item.assessments) {
-        final entry = _Entry(assessment: assessment, date: date);
+        final entry = _Entry.assessment(assessment, date);
         if (seen.add(entry.id)) entries.add(entry);
       }
     });
 
-    entries.sort((a, b) => a.date.compareTo(b.date));
+    entries.addAll(_tasks.map(_Entry.task));
+
+    // Undated tasks sort after everything that has a day.
+    entries.sort((a, b) {
+      final x = a.date, y = b.date;
+      if (x == null || y == null) {
+        return x == null && y == null ? 0 : (x == null ? 1 : -1);
+      }
+      return x.compareTo(y);
+    });
     return entries;
   }
 
@@ -178,7 +240,9 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
     return _allEntries
         .where(
           (entry) =>
-              entry.date.year == month.year && entry.date.month == month.month,
+              entry.date == null ||
+              (entry.date!.year == month.year &&
+                  entry.date!.month == month.month),
         )
         .toList();
   }
@@ -188,13 +252,15 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
   List<DateTime> get _monthsWithEntries {
     final months = <DateTime>{_monthOf(_today)};
     for (final entry in _allEntries) {
-      months.add(_monthOf(entry.date));
+      final date = entry.date;
+      if (date != null) months.add(_monthOf(date));
     }
     return months.toList()..sort((a, b) => a.compareTo(b));
   }
 
   _Bucket _bucketFor(_Entry entry) {
     if (_isDone(entry)) return _Bucket.done;
+    if (entry.date == null) return _Bucket.undated;
     final days = entry.daysUntilDue(_today);
     if (days < 0) return _Bucket.overdue;
     if (days == 0) return _Bucket.today;
@@ -219,6 +285,8 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
         return 'This week';
       case _Bucket.later:
         return 'Later';
+      case _Bucket.undated:
+        return 'No due date';
       case _Bucket.done:
         return 'Completed';
     }
@@ -229,7 +297,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
   String _monthLabelLong(DateTime month) =>
       DateFormat('MMMM yyyy').format(month);
 
-  String _dueLabel(_Entry entry) => DateFormat('EEE d MMM').format(entry.date);
+  String _dueLabel(_Entry entry) => DateFormat('EEE d MMM').format(entry.date!);
 
   /// The one date label a row carries.
   ///
@@ -237,14 +305,24 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
   /// never shows two competing date strings the way it did with a "Due ..."
   /// line beside a countdown pill.
   String _dueText(_Entry entry) {
+    if (entry.date == null) return '';
     final days = entry.daysUntilDue(_today);
+    final String day;
     if (days < 0) {
       final n = days.abs();
-      return n == 1 ? '1 day ago' : '$n days ago';
+      day = n == 1 ? '1 day ago' : '$n days ago';
+    } else if (days == 0) {
+      day = 'Today';
+    } else if (days == 1) {
+      day = 'Tomorrow';
+    } else {
+      day = _dueLabel(entry);
     }
-    if (days == 0) return 'Today';
-    if (days == 1) return 'Tomorrow';
-    return _dueLabel(entry);
+    final task = entry.task;
+    if (task != null && task.hasTime) {
+      return '$day, ${DateFormat.jm().format(task.due!)}';
+    }
+    return day;
   }
 
   // ---------------------------------------------------------------------------
@@ -265,7 +343,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
                 hasScrollBody: false,
                 child: Center(child: CircularProgressIndicator()),
               )
-            else if (_errorMessage != null)
+            else if (_errorMessage != null && _tasks.isEmpty)
               _buildErrorState()
             else if (_allEntries.isEmpty)
               _buildEmptyState()
@@ -306,6 +384,11 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
       ),
       actions: [
         if (_allEntries.isNotEmpty) _buildMonthPicker(theme),
+        IconButton(
+          tooltip: 'Add task',
+          onPressed: () => _openTaskSheet(),
+          icon: Icon(Icons.add, color: theme.colorScheme.primary),
+        ),
       ],
       bottom: _allEntries.isEmpty
           ? null
@@ -396,6 +479,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
       _Bucket.tomorrow,
       _Bucket.thisWeek,
       _Bucket.later,
+      _Bucket.undated,
     ];
 
     final grouped = <_Bucket, List<_Entry>>{};
@@ -541,11 +625,12 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
   /// list.
   Widget _buildRow(_Entry entry, {required bool isDone}) {
     final theme = Theme.of(context);
-    final assessment = entry.assessment;
-    final days = entry.daysUntilDue(_today);
+    final days = entry.date == null ? 1 : entry.daysUntilDue(_today);
+    final task = entry.task;
 
     return InkWell(
       onTap: () => _toggleCompleted(entry.id),
+      onLongPress: task == null ? null : () => _openTaskSheet(existing: task),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 13),
         child: Row(
@@ -582,9 +667,9 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    assessment.title.trim().isEmpty
+                    entry.title.trim().isEmpty
                         ? 'Untitled assignment'
-                        : assessment.title,
+                        : entry.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -601,9 +686,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
                   // renders class names this way. Colouring every row's class
                   // blue was decoration, not information.
                   Text(
-                    assessment.className.isEmpty
-                        ? 'Unclassified'
-                        : assessment.className,
+                    entry.subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -645,7 +728,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
         title: 'No assignments yet',
         body:
             'Assignments come from your school calendar feed. '
-            'Pull down to refresh.',
+            'Pull down to refresh, or add your own with the plus button.',
       ),
     );
   }
