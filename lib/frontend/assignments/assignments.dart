@@ -57,15 +57,7 @@ class _Entry {
   }
 
   /// Stable identity used to persist the completed state.
-  ///
-  /// Keyed on class + title + day (not time) so it survives re-fetches and
-  /// stays stable when the same assignment appears on the same day.
-  String get id {
-    final task = this.task;
-    if (task != null) return task.completionId;
-    final day = DateFormat('yyyy-MM-dd').format(date!);
-    return '${assessment!.className}|${assessment!.title}|$day';
-  }
+  String get id => task?.completionId ?? feedCompletionId(assessment!, date!);
 
   /// Whole days from [today] until this is due. Negative once it is late.
   /// Compared by calendar day so a task due at 15:30 yesterday is 1 day late.
