@@ -644,6 +644,15 @@ class _HomePageState extends State<HomePage>
                                                 Text(
                                                   _nextScheduleItem?.title ??
                                                       'No upcoming classes',
+                                                  // Real campus names are long
+                                                  // ("AP English Language &\nComposition"). Unbounded, they
+                                                  // wrap to a second line that
+                                                  // runs past the bottom of the
+                                                  // fixed-height header and
+                                                  // trips a RenderFlex overflow.
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                   style: TextStyle(
                                                     fontSize: 24,
                                                     fontWeight: FontWeight.w600,
@@ -713,11 +722,20 @@ class _HomePageState extends State<HomePage>
                         child: AnimatedOpacity(
                           opacity: collapsedTitleOpacity,
                           duration: const Duration(milliseconds: 100),
+                          // NOTE: this used to be a `Flexible` inside a
+                          // `Center`. `Flexible` only makes sense directly
+                          // inside a Flex, so it threw a ParentDataWidget
+                          // assertion on every frame. `Positioned` already
+                          // bounds the width, so plain padding is enough for
+                          // the ellipsis to kick in.
                           child: Center(
-                            child: Flexible(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
                               child: Text(
                                 "Up Next: ${_nextScheduleItem?.title ?? 'No upcoming classes'}",
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
                                   color: Colors.white,

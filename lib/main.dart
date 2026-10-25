@@ -1,4 +1,5 @@
 import 'package:connect_ed_2/frontend/articles/articles.dart';
+import 'package:connect_ed_2/frontend/assignments/assignments.dart';
 import 'package:connect_ed_2/frontend/calendar/calendar.dart';
 import 'package:connect_ed_2/frontend/events/events.dart';
 import 'package:connect_ed_2/frontend/home/home.dart';
@@ -68,10 +69,11 @@ class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
 
   List<Widget> pages = [
-    HomePage(),
-    CalendarPage(),
-    SportsPage(),
-    SettingsPage(),
+    const HomePage(),
+    const CalendarPage(),
+    const AssignmentsPage(),
+    const SportsPage(),
+    const SettingsPage(),
   ];
 
   @override
